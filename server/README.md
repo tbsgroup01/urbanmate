@@ -69,6 +69,21 @@ Failures return `success: false`, a stable error `code`, a safe message, and a r
 | POST | `/api/v1/addresses` | Customer | Create an address |
 | POST | `/api/v1/bookings` | Customer | Create a pending booking |
 | GET | `/api/v1/bookings` | Customer/provider/admin | List bookings visible to the caller |
+| GET | `/api/v1/providers` | Public | Find online, identity-verified, approved providers |
+| GET | `/api/v1/providers/:providerId` | Public | View a provider's public profile and working hours |
+| GET | `/api/v1/providers/:providerId/reviews` | Public | List published provider reviews |
+| POST | `/api/v1/providers/reviews` | Customer | Review a provider after a completed booking |
+| GET/PATCH | `/api/v1/providers/me/profile` | Provider | Read or update personal/professional profile |
+| PUT/GET | `/api/v1/providers/me/services` | Provider | Manage selected services and optional custom prices |
+| PUT/GET | `/api/v1/providers/me/service-areas` | Provider | Manage provider coverage areas |
+| PUT/GET | `/api/v1/providers/me/availability` | Provider | Replace or read working-hour windows |
+| PATCH | `/api/v1/providers/me/online-status` | Provider | Go online or offline |
+| POST | `/api/v1/providers/me/documents/upload` | Provider | Create a short-lived private upload URL |
+| POST | `/api/v1/providers/me/documents/:documentId/complete` | Provider | Verify and complete an uploaded document |
+| GET | `/api/v1/providers/me/earnings` | Provider | View commissions by currency and settlement status |
+| GET/PATCH | `/api/v1/providers/admin/applications` | Admin | List applications or view application details |
+| PATCH | `/api/v1/providers/admin/applications/:providerId/decision` | Admin | Approve, reject, or suspend an application |
+| PATCH | `/api/v1/providers/admin/documents/:documentId/review` | Admin | Approve or reject an uploaded document |
 
 Customer registration only grants the customer role. Provider registration only grants the provider role and creates a provider profile in pending approval. Admin role assignment is only available to the controlled bootstrap seeder; there is no public admin registration. Login endpoints enforce the expected role. Use `authorize` for general role checks, `authorizeExclusive` for provider/admin-only surfaces, and `requireApprovedProvider` for operations that require an approved provider profile. Suspended accounts are denied on every authenticated request, and their refresh sessions are revoked when suspended.
 
@@ -88,7 +103,15 @@ An active pricing rule can be global, city-specific, or area-specific. The most-
 
 Migrations live in `src/database/migrations`, seeders in `src/database/seeders`, and model definitions/associations in `src/models`. Use migrations for schema changes; do not use `sequelize.sync()` in deployed environments.
 
-The schema includes users, roles and user-role assignments, addresses, service categories and subcategories, services, cities and areas, service images/packages/add-ons/pricing rules/availability, providers, provider documents, provider availability and service offerings, bookings and selected-option snapshots, payments, commissions, reviews, refresh sessions, password reset tokens, and OTP challenges. Foreign keys, uniqueness constraints, and query indexes are declared in migrations. Expired token/challenge cleanup should be scheduled as an operational retention job.
+The schema includes users, roles and user-role assignments, addresses, service categories and subcategories, services, cities and areas, service images/packages/add-ons/pricing rules/availability, providers and provider coverage, provider documents and working hours, provider service offerings, bookings and selected-option snapshots, payments, commissions, reviews, refresh sessions, password reset tokens, and OTP challenges. Foreign keys, uniqueness constraints, and query indexes are declared in migrations. Expired token/challenge cleanup should be scheduled as an operational retention job.
+
+### Provider onboarding and eligibility
+
+Provider applications start pending. Providers maintain personal/professional details, select active services and coverage areas, and define non-overlapping weekly availability windows with an IANA timezone. Admin approval requires an active account, verified email, completed legal name/date-of-birth/professional-title fields, and the latest uploaded front and back identity documents to both be approved and unexpired. A replacement identity document immediately disables identity verification and takes an approved provider offline until the new documents are reviewed and the application is approved again.
+
+Identity documents use private S3-compatible object storage. Configure `DOCUMENT_STORAGE_BUCKET` and `DOCUMENT_STORAGE_REGION`; optionally set `DOCUMENT_STORAGE_ENDPOINT` and the access-key/secret pair for S3-compatible services, plus `DOCUMENT_STORAGE_FORCE_PATH_STYLE` when required. Providers request a five-minute presigned PUT URL, upload with the returned `Content-Type`, then call the completion endpoint; the API verifies object size, declared MIME type, and JPEG/PNG/PDF file signatures before marking the document uploaded. Admin and owner downloads use short-lived signed URLs. The bucket should remain private, enable encryption at rest, and apply retention policies appropriate for identity data. Upload endpoints accept JPEG, PNG, or PDF files up to 10 MB.
+
+Provider discovery only returns online, identity-verified, approved providers and can filter by service, city, and area. Assigned customer bookings independently verify the provider's active account, verified email, current identity documents, approval, online status, selected service, configured area coverage, working hours, and booking conflicts. Providers are forced offline when their user account is suspended. Public provider profiles omit legal identity details and show only professional data, working hours, service offerings, coverage, and published reviews. Customers can review only a completed booking with an assigned provider. Earnings are commission totals grouped by currency and settlement status; payment/payout processing is not implemented here.
 
 ## Structure
 

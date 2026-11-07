@@ -21,7 +21,10 @@ const {
 } = require('../../models');
 const AppError = require('../../utils/app-error');
 const { calculateEffectivePrice, roundPrice } = require('../catalog/pricing');
-const { hasCurrentIdentityDocuments } = require('../providers/provider-verification');
+const {
+  hasCurrentIdentityDocuments,
+  isProviderBookable
+} = require('../providers/provider-verification');
 
 function getLocalSchedule(date, timezone) {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -139,10 +142,11 @@ async function createBooking(customerId, input) {
         transaction,
         lock: transaction.LOCK.UPDATE
       });
-      if (!provider || !provider.user.emailVerifiedAt) {
+      if (!provider) {
         throw new AppError('Provider is not verified, approved, and online', 400, 'PROVIDER_UNAVAILABLE');
       }
-      if (!await hasCurrentIdentityDocuments(provider.id, transaction)) {
+      const currentIdentity = await hasCurrentIdentityDocuments(provider.id, transaction);
+      if (!isProviderBookable(provider, provider.user, currentIdentity)) {
         throw new AppError('Provider identity documents have expired or are no longer verified', 400, 'PROVIDER_UNAVAILABLE');
       }
 

@@ -1,4 +1,4 @@
-const { Op, fn, col } = require('sequelize');
+const { Op, fn, col, literal } = require('sequelize');
 const {
   sequelize,
   User,
@@ -12,8 +12,7 @@ const {
   City,
   Review,
   Commission,
-  Booking,
-  ProviderAvailability
+  Booking
 } = require('../../models');
 const AppError = require('../../utils/app-error');
 const documentStorage = require('./document-storage.service');
@@ -23,6 +22,29 @@ const publicProviderAttributes = [
   'id', 'displayName', 'businessName', 'bio', 'professionalTitle',
   'businessType', 'experienceYears', 'averageRating', 'reviewCount'
 ];
+
+function currentIdentityDocumentsExpression() {
+  const today = sequelize.escape(new Date().toISOString().slice(0, 10));
+  const validDocument = (type) => `
+    EXISTS (
+      SELECT 1 FROM provider_documents AS verified_document
+      WHERE verified_document.provider_id = Provider.id
+        AND verified_document.document_type = ${sequelize.escape(type)}
+        AND verified_document.status = 'approved'
+        AND verified_document.uploaded_at IS NOT NULL
+        AND (verified_document.expires_at IS NULL OR verified_document.expires_at >= ${today})
+        AND NOT EXISTS (
+          SELECT 1 FROM provider_documents AS newer_document
+          WHERE newer_document.provider_id = verified_document.provider_id
+            AND newer_document.document_type = verified_document.document_type
+            AND (
+              newer_document.created_at > verified_document.created_at
+              OR (newer_document.created_at = verified_document.created_at AND newer_document.id > verified_document.id)
+            )
+        )
+    )`;
+  return literal(`${validDocument('identity_front')} AND ${validDocument('identity_back')}`);
+}
 
 async function findProvider(userId, transaction) {
   const provider = await Provider.findOne({
@@ -380,9 +402,10 @@ async function setOnlineStatus(userId, isOnline) {
   return sequelize.transaction(async (transaction) => {
     const provider = await findProvider(userId, transaction);
     if (isOnline) {
-      const user = await User.findByPk(userId, { attributes: ['status'], transaction });
+      const user = await User.findByPk(userId, { attributes: ['status', 'emailVerifiedAt'], transaction });
       const currentIdentity = await hasCurrentIdentityDocuments(provider.id, transaction);
-      if (user.status !== 'active' || provider.approvalStatus !== 'approved' || !provider.identityVerified || !currentIdentity) {
+      if (user.status !== 'active' || !user.emailVerifiedAt
+        || provider.approvalStatus !== 'approved' || !provider.identityVerified || !currentIdentity) {
         throw new AppError('Only active, identity-verified, approved providers can go online', 403, 'PROVIDER_NOT_ELIGIBLE');
       }
     }
@@ -411,7 +434,12 @@ async function getEarnings(userId) {
 
 async function getProviderReviews(providerId, { page, limit, rating }) {
   const provider = await Provider.findOne({
-    where: { id: providerId, approvalStatus: 'approved', identityVerified: true },
+    where: {
+      id: providerId,
+      approvalStatus: 'approved',
+      identityVerified: true,
+      [Op.and]: [currentIdentityDocumentsExpression()]
+    },
     attributes: ['id']
   });
   if (!provider) throw new AppError('Provider profile was not found', 404, 'PROVIDER_PROFILE_NOT_FOUND');
@@ -440,9 +468,21 @@ async function getProviderReviews(providerId, { page, limit, rating }) {
 
 async function getPublicProvider(providerId) {
   const provider = await Provider.findOne({
-    where: { id: providerId, approvalStatus: 'approved', identityVerified: true },
+    where: {
+      id: providerId,
+      approvalStatus: 'approved',
+      identityVerified: true,
+      [Op.and]: [currentIdentityDocumentsExpression()]
+    },
     attributes: publicProviderAttributes,
     include: [
+      {
+        model: User,
+        as: 'user',
+        attributes: [],
+        where: { status: 'active', emailVerifiedAt: { [Op.ne]: null } },
+        required: true
+      },
       {
         model: ProviderService,
         as: 'providerServices',
@@ -454,7 +494,7 @@ async function getPublicProvider(providerId) {
       {
         model: ProviderArea,
         as: 'providerAreas',
-        attributes: [],
+        attributes: ['areaId'],
         where: { isActive: true },
         required: false,
         include: [{
@@ -475,6 +515,7 @@ async function getPublicProvider(providerId) {
   });
   if (!provider) throw new AppError('Provider profile was not found', 404, 'PROVIDER_PROFILE_NOT_FOUND');
   const plain = provider.get({ plain: true });
+  delete plain.user;
   const aggregate = await Review.findOne({
     where: { providerId, status: 'published' },
     attributes: [[fn('AVG', col('rating')), 'averageRating'], [fn('COUNT', col('id')), 'reviewCount']],
@@ -524,8 +565,19 @@ async function createReview(customerId, input) {
 }
 
 async function listPublicProviders(filters) {
-  const where = { approvalStatus: 'approved', identityVerified: true, isOnline: true };
-  const includes = [];
+  const where = {
+    approvalStatus: 'approved',
+    identityVerified: true,
+    isOnline: true,
+    [Op.and]: [currentIdentityDocumentsExpression()]
+  };
+  const includes = [{
+    model: User,
+    as: 'user',
+    attributes: [],
+    where: { status: 'active', emailVerifiedAt: { [Op.ne]: null } },
+    required: true
+  }];
   if (filters.serviceId) {
     includes.push({
       model: Service,

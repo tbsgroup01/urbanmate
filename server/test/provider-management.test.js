@@ -7,7 +7,10 @@ process.env.NODE_ENV = 'test';
 const schemas = require('../src/modules/providers/provider.schemas');
 const { providerRegisterSchema } = require('../src/modules/auth/auth.schemas');
 const { ProviderDocument } = require('../src/models');
-const { hasCurrentIdentityDocuments } = require('../src/modules/providers/provider-verification');
+const {
+  hasCurrentIdentityDocuments,
+  isProviderBookable
+} = require('../src/modules/providers/provider-verification');
 const migration = require('../src/database/migrations/202611070005-expand-provider-management');
 
 test('provider onboarding schemas validate profile details, documents, and admin decisions', () => {
@@ -70,8 +73,8 @@ test('provider identity requires the latest approved, uploaded front and back do
   assert.equal(await hasCurrentIdentityDocuments('provider-id', undefined, now), true);
 
   ProviderDocument.findAll = async () => [
-    { documentType: 'identity_front', status: 'approved', expiresAt: null, createdAt: new Date('2026-01-01') },
     { documentType: 'identity_front', status: 'pending', expiresAt: null, createdAt: new Date('2026-11-01') },
+    { documentType: 'identity_front', status: 'approved', expiresAt: null, createdAt: new Date('2026-01-01') },
     { documentType: 'identity_back', status: 'approved', expiresAt: null }
   ];
   assert.equal(await hasCurrentIdentityDocuments('provider-id', undefined, now), false);
@@ -81,6 +84,22 @@ test('provider identity requires the latest approved, uploaded front and back do
     { documentType: 'identity_back', status: 'approved', expiresAt: null }
   ];
   assert.equal(await hasCurrentIdentityDocuments('provider-id', undefined, now), false);
+});
+
+test('booking eligibility requires an active, email-verified, online, identity-verified approved provider', () => {
+  const provider = {
+    approvalStatus: 'approved',
+    identityVerified: true,
+    isOnline: true
+  };
+  const user = { status: 'active', emailVerifiedAt: new Date() };
+  assert.equal(isProviderBookable(provider, user, true), true);
+  assert.equal(isProviderBookable({ ...provider, identityVerified: false }, user, true), false);
+  assert.equal(isProviderBookable({ ...provider, approvalStatus: 'pending' }, user, true), false);
+  assert.equal(isProviderBookable({ ...provider, isOnline: false }, user, true), false);
+  assert.equal(isProviderBookable(provider, { ...user, status: 'suspended' }, true), false);
+  assert.equal(isProviderBookable(provider, { ...user, emailVerifiedAt: null }, true), false);
+  assert.equal(isProviderBookable(provider, user, false), false);
 });
 
 test('provider management migration adds verification and online state plus indexed coverage mapping', async () => {

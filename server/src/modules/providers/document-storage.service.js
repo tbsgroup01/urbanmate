@@ -48,22 +48,43 @@ async function createUploadUrl({ key, contentType, contentLength }) {
     Bucket: env.DOCUMENT_STORAGE_BUCKET,
     Key: key,
     ContentType: contentType,
-    ContentLength: contentLength,
-    ServerSideEncryption: 'AES256'
+    ContentLength: contentLength
   });
   return getSignedUrl(getClient(), command, { expiresIn: UPLOAD_URL_TTL_SECONDS });
 }
 
 async function verifyUploadedObject(document) {
-  const result = await getClient().send(new HeadObjectCommand({
-    Bucket: env.DOCUMENT_STORAGE_BUCKET,
-    Key: document.storageKey
-  }));
+  let result;
+  try {
+    result = await getClient().send(new HeadObjectCommand({
+      Bucket: env.DOCUMENT_STORAGE_BUCKET,
+      Key: document.storageKey
+    }));
+  } catch (error) {
+    if (error.name === 'NotFound' || error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+      throw new AppError('Uploaded document was not found in storage', 409, 'DOCUMENT_UPLOAD_MISSING');
+    }
+    throw error;
+  }
   if (result.ContentLength !== document.fileSizeBytes || result.ContentType !== document.contentType) {
     throw new AppError('Uploaded document does not match the declared type or size', 400, 'DOCUMENT_UPLOAD_MISMATCH');
   }
   if (result.ContentLength > MAX_DOCUMENT_BYTES) {
     throw new AppError('Provider documents must be 10 MB or smaller', 400, 'DOCUMENT_TOO_LARGE');
+  }
+  const firstBytes = await getClient().send(new GetObjectCommand({
+    Bucket: env.DOCUMENT_STORAGE_BUCKET,
+    Key: document.storageKey,
+    Range: 'bytes=0-7'
+  }));
+  const signature = Buffer.from(await firstBytes.Body.transformToByteArray());
+  const isValidSignature = document.contentType === 'application/pdf'
+    ? signature.subarray(0, 5).toString('ascii') === '%PDF-'
+    : document.contentType === 'image/png'
+      ? signature.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+      : signature.length >= 3 && signature[0] === 0xff && signature[1] === 0xd8 && signature[2] === 0xff;
+  if (!isValidSignature) {
+    throw new AppError('Uploaded document content does not match its declared file type', 400, 'DOCUMENT_CONTENT_INVALID');
   }
 }
 

@@ -1,15 +1,27 @@
 const { Op } = require('sequelize');
 const { ProviderDocument } = require('../../models');
 
+function isProviderBookable(provider, user, identityDocumentsCurrent) {
+  return Boolean(
+    provider
+    && user
+    && provider.approvalStatus === 'approved'
+    && provider.identityVerified
+    && provider.isOnline
+    && user.status === 'active'
+    && user.emailVerifiedAt
+    && identityDocumentsCurrent
+  );
+}
+
 async function hasCurrentIdentityDocuments(providerId, transaction, now = new Date()) {
   const documents = await ProviderDocument.findAll({
     where: {
       providerId,
-      documentType: { [Op.in]: ['identity_front', 'identity_back'] },
-      uploadedAt: { [Op.ne]: null }
+      documentType: { [Op.in]: ['identity_front', 'identity_back'] }
     },
     attributes: ['documentType', 'status', 'expiresAt', 'createdAt'],
-    order: [['createdAt', 'DESC']],
+    order: [['createdAt', 'DESC'], ['id', 'DESC']],
     transaction
   });
   const latest = new Map();
@@ -23,4 +35,4 @@ async function hasCurrentIdentityDocuments(providerId, transaction, now = new Da
   });
 }
 
-module.exports = { hasCurrentIdentityDocuments };
+module.exports = { hasCurrentIdentityDocuments, isProviderBookable };
