@@ -257,7 +257,7 @@ const Booking = sequelize.define('Booking', {
   serviceNameSnapshot: { type: DataTypes.STRING(140), allowNull: false },
   scheduledStart: { type: DataTypes.DATE, allowNull: false },
   scheduledEnd: { type: DataTypes.DATE, allowNull: false },
-  status: statusEnum(['pending', 'confirmed', 'in_progress', 'completed', 'cancelled']),
+  status: statusEnum(['pending', 'assigned', 'confirmed', 'in_progress', 'provider_completed', 'completed', 'cancelled', 'rejected']),
   subtotal: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   platformFee: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
   tax: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
@@ -315,6 +315,33 @@ const Review = sequelize.define('Review', {
   comment: DataTypes.TEXT,
   status: statusEnum(['published', 'hidden', 'flagged'])
 }, { ...common, tableName: 'reviews', indexes: [{ fields: ['provider_id', 'status'] }] });
+
+const BookingStatusHistory = sequelize.define('BookingStatusHistory', {
+  id: uuid,
+  bookingId: { type: DataTypes.UUID, allowNull: false },
+  actorUserId: DataTypes.UUID,
+  fromStatus: DataTypes.STRING(32),
+  toStatus: { type: DataTypes.STRING(32), allowNull: false },
+  reason: DataTypes.STRING(500),
+  metadata: DataTypes.JSON
+}, {
+  ...common,
+  tableName: 'booking_status_history',
+  indexes: [{ fields: ['booking_id', 'created_at'] }]
+});
+
+const Notification = sequelize.define('Notification', {
+  id: uuid,
+  userId: { type: DataTypes.UUID, allowNull: false },
+  bookingId: DataTypes.UUID,
+  type: { type: DataTypes.STRING(60), allowNull: false },
+  message: { type: DataTypes.STRING(500), allowNull: false },
+  readAt: DataTypes.DATE
+}, {
+  ...common,
+  tableName: 'notifications',
+  indexes: [{ fields: ['user_id', 'created_at'] }, { fields: ['booking_id'] }]
+});
 
 const RefreshToken = sequelize.define('RefreshToken', {
   id: uuid,
@@ -417,6 +444,13 @@ Address.hasMany(Booking, { as: 'bookings', foreignKey: 'addressId' });
 Booking.belongsTo(Address, { as: 'address', foreignKey: 'addressId' });
 Booking.hasMany(BookingServiceItem, { as: 'serviceItems', foreignKey: 'bookingId' });
 BookingServiceItem.belongsTo(Booking, { as: 'booking', foreignKey: 'bookingId' });
+Booking.hasMany(BookingStatusHistory, { as: 'statusHistory', foreignKey: 'bookingId' });
+BookingStatusHistory.belongsTo(Booking, { as: 'booking', foreignKey: 'bookingId' });
+BookingStatusHistory.belongsTo(User, { as: 'actor', foreignKey: 'actorUserId' });
+User.hasMany(Notification, { as: 'notifications', foreignKey: 'userId' });
+Notification.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+Booking.hasMany(Notification, { as: 'notifications', foreignKey: 'bookingId' });
+Notification.belongsTo(Booking, { as: 'booking', foreignKey: 'bookingId' });
 ServicePackage.hasMany(BookingServiceItem, { as: 'bookingItems', foreignKey: 'servicePackageId' });
 BookingServiceItem.belongsTo(ServicePackage, { as: 'servicePackage', foreignKey: 'servicePackageId' });
 ServiceAddon.hasMany(BookingServiceItem, { as: 'bookingItems', foreignKey: 'serviceAddonId' });
@@ -463,6 +497,8 @@ module.exports = {
   ProviderService,
   ProviderArea,
   Booking,
+  BookingStatusHistory,
+  Notification,
   Payment,
   Commission,
   Review,
