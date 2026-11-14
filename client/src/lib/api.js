@@ -14,6 +14,15 @@ export class ApiError extends Error {
   }
 }
 
+function getApiError(payload) {
+  const error = payload?.error || payload;
+  return {
+    message: error?.message,
+    code: error?.code,
+    details: error?.details
+  };
+}
+
 export function setAccessToken(token) {
   accessToken = token || null;
   if (accessToken) sessionStorage.setItem(TOKEN_KEY, accessToken);
@@ -34,7 +43,13 @@ async function refreshAccessToken() {
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success || !payload.data?.accessToken) {
         setAccessToken(null);
-        throw new ApiError(payload?.message || 'Your session has expired. Please sign in again.', response.status);
+        const apiError = getApiError(payload);
+        throw new ApiError(
+          apiError.message || 'Your session has expired. Please sign in again.',
+          response.status,
+          apiError.code,
+          apiError.details
+        );
       }
       setAccessToken(payload.data.accessToken);
       return payload.data.accessToken;
@@ -68,11 +83,12 @@ async function send(path, options = {}, token = accessToken) {
     return send(path, { ...options, retrying: true }, refreshedToken);
   }
   if (!response.ok || payload?.success === false) {
+    const apiError = getApiError(payload);
     throw new ApiError(
-      payload?.message || `Request failed (${response.status})`,
+      apiError.message || `Request failed (${response.status})`,
       response.status,
-      payload?.code,
-      payload?.details
+      apiError.code,
+      apiError.details
     );
   }
   return payload?.data;
@@ -96,5 +112,6 @@ export const api = {
 
 export function getErrorMessage(error) {
   if (error instanceof ApiError) return error.message;
+  if (error instanceof Error && error.message) return error.message;
   return 'Something went wrong. Please try again.';
 }

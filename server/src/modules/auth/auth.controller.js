@@ -41,6 +41,11 @@ async function registerProvider(req, res) {
   return sendSession(res, session, 201, 'Provider application created');
 }
 
+async function registerAdmin(req, res) {
+  const user = await authService.createAdminAccount(req.body);
+  return success(res, user, { statusCode: 201, message: 'Admin account created' });
+}
+
 function loginFor(role, message) {
   return async (req, res) => {
     const session = await authService.login(req.body, role, requestMetadata(req));
@@ -98,6 +103,7 @@ async function updateAccountStatus(req, res) {
 module.exports = {
   registerCustomer,
   registerProvider,
+  registerAdmin,
   loginFor,
   refresh,
   logout,

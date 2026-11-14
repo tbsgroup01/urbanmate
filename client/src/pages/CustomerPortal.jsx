@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -14,10 +14,10 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
-  Wrench,
-  X
+  Wrench
 } from 'lucide-react';
 import AddressEditor from '../components/AddressEditor';
+import EmailVerification from '../components/EmailVerification';
 import {
   Badge,
   Button,
@@ -30,7 +30,6 @@ import {
   PageLoader,
   SectionHeading,
   Select,
-  Textarea,
   currency
 } from '../components/ui';
 import { api, getErrorMessage } from '../lib/api';
@@ -352,40 +351,7 @@ function BookingHistory({ onSignIn }) {
   );
 }
 
-function CustomerProfile({ user }) {
-  const [emailOtp, setEmailOtp] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const verified = Boolean(user.emailVerifiedAt || user.emailVerified);
-
-  async function requestCode() {
-    setBusy(true);
-    setError('');
-    setMessage('');
-    try {
-      await api.post('/auth/otp/email/request', {});
-      setMessage('A verification code has been sent to your email.');
-    } catch (requestError) {
-      setError(getErrorMessage(requestError));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function verifyCode(event) {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      await api.post('/auth/otp/email/verify', { code: emailOtp });
-      setMessage('Your email is verified. Refresh the page to update your profile.');
-    } catch (requestError) {
-      setError(getErrorMessage(requestError));
-    } finally {
-      setBusy(false);
-    }
-  }
-
+function CustomerProfile({ user, onUserUpdate }) {
   return (
     <div>
       <SectionHeading eyebrow="Account" title="Your profile" description="Manage your account details and security." />
@@ -395,22 +361,10 @@ function CustomerProfile({ user }) {
           <h2 className="mt-4 text-xl font-extrabold text-slate-900">{user.fullName}</h2>
           <p className="mt-1 text-sm text-slate-500">{user.email}</p>
           <div className="mt-5 border-t border-slate-100 pt-4">
-            <div className="flex items-center justify-between"><span className="text-sm text-slate-500">Email verification</span><Badge tone={verified ? 'green' : 'amber'}>{verified ? 'Verified' : 'Action needed'}</Badge></div>
-            {!verified && <Button className="mt-4 w-full" variant="secondary" onClick={requestCode} disabled={busy}>{busy ? 'Sending…' : 'Send verification code'}</Button>}
+            <p className="text-sm leading-6 text-slate-500">Your account is protected with secure sign-in. Keep your email current so you can receive important account updates.</p>
           </div>
         </Card>
-        <Card className="p-6">
-          <h3 className="font-extrabold text-slate-900">Keep your account protected</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500">Urbanmate uses secure sign-in and verifies your email before you book services.</p>
-          {!verified && (
-            <form onSubmit={verifyCode} className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <Input value={emailOtp} onChange={(event) => setEmailOtp(event.target.value)} required inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="6-digit code" />
-              <Button type="submit" variant="secondary" disabled={busy}>Verify</Button>
-            </form>
-          )}
-          {message && <p role="status" className="mt-4 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">{message}</p>}
-          {error && <p role="alert" className="mt-4 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700">{error}</p>}
-        </Card>
+        <EmailVerification user={user} onVerified={onUserUpdate} />
       </div>
     </div>
   );
@@ -609,7 +563,7 @@ function BookingFlow({ serviceId, onClose, onNeedLogin }) {
   );
 }
 
-export default function CustomerPortal({ user, active, onTabChange, onSignIn }) {
+export default function CustomerPortal({ user, active, onTabChange, onSignIn, onUserUpdate }) {
   const [serviceId, setServiceId] = useState('');
   const [loginPrompt, setLoginPrompt] = useState(false);
 
@@ -624,7 +578,7 @@ export default function CustomerPortal({ user, active, onTabChange, onSignIn }) 
   let content;
   if (active === 'bookings') content = <BookingHistory onSignIn={() => onTabChange('services')} />;
   else if (active === 'addresses') content = <AddressBook />;
-  else if (active === 'profile' && user) content = <CustomerProfile user={user} />;
+  else if (active === 'profile' && user) content = <CustomerProfile user={user} onUserUpdate={onUserUpdate} />;
   else if (active === 'services') content = <ServiceExplorer user={user} onSignIn={() => setLoginPrompt(true)} onOpenService={openService} />;
   else content = <CustomerHome user={user} onSignIn={() => setLoginPrompt(true)} onOpenService={openService} onTabChange={onTabChange} />;
 

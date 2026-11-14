@@ -5,23 +5,20 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   ChartNoAxesCombined,
-  ChevronDown,
   ClipboardList,
-  CreditCard,
   LayoutDashboard,
   LogOut,
   MapPin,
   Menu,
   PackageSearch,
-  Settings2,
   Shield,
   Sparkles,
   UserRound,
   Users,
-  Wallet,
-  X
+  Wallet
 } from 'lucide-react';
 import AuthDialog from './components/AuthDialog';
+import EmailVerification from './components/EmailVerification';
 import {
   Brand,
   Button,
@@ -77,6 +74,10 @@ function getUserRoles(user) {
   return user?.roles?.map((role) => role.name) || [];
 }
 
+function getPasswordResetToken() {
+  return new URLSearchParams(window.location.search).get('token') || '';
+}
+
 function PortalNav({ portal, active, onChange, mobile = false }) {
   return (
     <nav className={mobile ? 'grid grid-cols-4 gap-1' : 'space-y-1'}>
@@ -99,7 +100,7 @@ function PortalNav({ portal, active, onChange, mobile = false }) {
   );
 }
 
-function AppHeader({ user, portal, openAuth, onLogout, onToggleMenu }) {
+function AppHeader({ user, portal, openAuth, onLogout, onToggleMenu, onVerifyEmail }) {
   const firstName = user?.fullName?.split(' ')[0] || 'there';
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/75 bg-white/90 backdrop-blur-xl">
@@ -118,8 +119,7 @@ function AppHeader({ user, portal, openAuth, onLogout, onToggleMenu }) {
 
         {!user ? (
           <div className="flex items-center gap-2 sm:gap-3">
-            <button type="button" onClick={() => openAuth('provider')} className="hidden text-sm font-semibold text-slate-600 transition hover:text-emerald-700 sm:block">Become a pro</button>
-            <button type="button" onClick={() => openAuth('admin')} className="hidden text-sm font-semibold text-slate-600 transition hover:text-emerald-700 md:block">Admin</button>
+            <button type="button" onClick={() => openAuth('provider', 'register')} className="hidden text-sm font-semibold text-slate-600 transition hover:text-emerald-700 sm:block">Become a pro</button>
             <Button size="sm" onClick={() => openAuth('customer')}>Sign in <ArrowUpRight size={15} /></Button>
           </div>
         ) : (
@@ -137,6 +137,11 @@ function AppHeader({ user, portal, openAuth, onLogout, onToggleMenu }) {
                   <p className="truncate text-sm font-bold text-slate-800">{user.fullName}</p>
                   <p className="truncate text-xs text-slate-400">{user.email}</p>
                 </div>
+                {!user.emailVerified && (
+                  <button type="button" onClick={onVerifyEmail} className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
+                    <Shield size={15} /> Verify email
+                  </button>
+                )}
                 <button type="button" onClick={onLogout} className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50">
                   <LogOut size={15} /> Sign out
                 </button>
@@ -175,7 +180,7 @@ function PublicLanding({ openAuth }) {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button size="lg" onClick={() => openAuth('customer')}>Explore services <ArrowUpRight size={17} /></Button>
-              <Button variant="secondary" size="lg" onClick={() => openAuth('provider')}>Join as a professional</Button>
+              <Button variant="secondary" size="lg" onClick={() => openAuth('provider', 'register')}>Join as a professional</Button>
             </div>
             <div className="mt-9 flex items-center gap-4 text-xs font-semibold text-slate-500">
               <div className="flex -space-x-2">
@@ -251,7 +256,7 @@ function PublicLanding({ openAuth }) {
             <h2 className="mt-2 text-2xl font-extrabold tracking-tight">Good work deserves a better platform.</h2>
             <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/75">Grow your business, build trusted relationships, and stay in control of your schedule.</p>
           </div>
-          <Button variant="secondary" onClick={() => openAuth('provider')}>Join Urbanmate <ArrowUpRight size={16} /></Button>
+          <Button variant="secondary" onClick={() => openAuth('provider', 'register')}>Join Urbanmate <ArrowUpRight size={16} /></Button>
         </div>
       </section>
     </main>
@@ -263,10 +268,13 @@ function App() {
   const [portal, setPortal] = useState('customer');
   const [active, setActive] = useState('home');
   const [booting, setBooting] = useState(Boolean(getAccessToken()));
-  const [authOpen, setAuthOpen] = useState(false);
+  const [resetToken, setResetToken] = useState(getPasswordResetToken);
+  const [authOpen, setAuthOpen] = useState(() => Boolean(getPasswordResetToken()));
+  const [authMode, setAuthMode] = useState(() => getPasswordResetToken() ? 'reset' : 'login');
   const [authRole, setAuthRole] = useState('customer');
   const [menuOpen, setMenuOpen] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [emailVerifyOpen, setEmailVerifyOpen] = useState(false);
 
   useEffect(() => {
     if (!getAccessToken()) return;
@@ -290,10 +298,17 @@ function App() {
   }, []);
 
   const availablePortals = useMemo(() => getUserRoles(user), [user]);
-  function openAuth(role = 'customer') {
+  function openAuth(role = 'customer', mode = 'login') {
     setAuthRole(role);
+    setAuthMode(mode);
     setAuthError('');
     setAuthOpen(true);
+  }
+
+  function completePasswordReset() {
+    setResetToken('');
+    setAuthMode('login');
+    window.history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`);
   }
 
   function onAuthSuccess(nextUser) {
@@ -316,20 +331,28 @@ function App() {
       setUser(null);
       setPortal('customer');
       setActive('home');
+      setEmailVerifyOpen(false);
     }
   }
 
   const portalContent = portal === 'provider'
-    ? <ProviderPortal user={user} active={active} onTabChange={setActive} />
+    ? <ProviderPortal user={user} active={active} onTabChange={setActive} onUserUpdate={setUser} />
     : portal === 'admin'
       ? <AdminPortal user={user} active={active} onTabChange={setActive} />
-      : <CustomerPortal user={user} active={active} onTabChange={setActive} onSignIn={() => openAuth('customer')} />;
+      : <CustomerPortal user={user} active={active} onTabChange={setActive} onSignIn={() => openAuth('customer')} onUserUpdate={setUser} />;
 
   if (booting) return <PageLoader label="Securing your Urbanmate session…" />;
 
   return (
     <div className="min-h-screen bg-[#f7f8f6] text-slate-900">
-      <AppHeader user={user} portal={portal} openAuth={openAuth} onLogout={logout} onToggleMenu={() => setMenuOpen((value) => !value)} />
+      <AppHeader
+        user={user}
+        portal={portal}
+        openAuth={openAuth}
+        onLogout={logout}
+        onToggleMenu={() => setMenuOpen((value) => !value)}
+        onVerifyEmail={() => setEmailVerifyOpen(true)}
+      />
       {user ? (
         <div className="mx-auto flex max-w-[1440px] gap-7 px-4 sm:px-7 xl:px-10">
           <aside className={`fixed inset-y-[72px] left-0 z-20 w-[260px] border-r border-slate-200 bg-white px-5 py-7 transition-transform lg:sticky lg:top-[72px] lg:block lg:h-[calc(100vh-72px)] lg:translate-x-0 lg:border-0 lg:bg-transparent lg:px-0 ${menuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`}>
@@ -366,7 +389,16 @@ function App() {
         </div>
       </footer>
       <Modal open={authOpen} onClose={() => setAuthOpen(false)} title="Your Urbanmate account">
-        <AuthDialog initialRole={authRole} onClose={() => setAuthOpen(false)} onSuccess={onAuthSuccess} />
+        <AuthDialog
+          initialRole={authRole}
+          initialMode={authMode}
+          resetToken={resetToken}
+          onResetComplete={completePasswordReset}
+          onSuccess={onAuthSuccess}
+        />
+      </Modal>
+      <Modal open={emailVerifyOpen} onClose={() => setEmailVerifyOpen(false)} title="Verify your email">
+        {user && <EmailVerification user={user} onVerified={setUser} />}
       </Modal>
     </div>
   );

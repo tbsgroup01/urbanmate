@@ -42,7 +42,7 @@ app.use(pinoHttp({
   }
 }));
 
-app.get('/health/live', (req, res) => success(res, { status: 'ok' }, { message: 'Liveness check passed' }));
+app.get('/health', (req, res) => success(res, { status: 'ok' }, { message: 'Liveness check passed' }));
 app.get('/health/ready', async (req, res, next) => {
   try {
     await sequelize.authenticate();

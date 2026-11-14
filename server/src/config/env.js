@@ -36,6 +36,7 @@ const envSchema = z.object({
   DOCUMENT_STORAGE_ACCESS_KEY_ID: z.string().default(''),
   DOCUMENT_STORAGE_SECRET_ACCESS_KEY: z.string().default(''),
   DOCUMENT_STORAGE_FORCE_PATH_STYLE: z.stringbool().default(false),
+  ALLOW_DEV_ADMIN_REGISTRATION: z.stringbool().default(false),
   ADMIN_EMAIL: z.string().default('').refine((value) => !value || z.string().email().safeParse(value).success, 'ADMIN_EMAIL must be a valid email address'),
   ADMIN_PASSWORD: z.string().default('').refine((value) => (
     !value || (value.length >= 10 && Buffer.byteLength(value, 'utf8') <= 72)

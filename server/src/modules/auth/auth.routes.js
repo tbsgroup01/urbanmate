@@ -2,6 +2,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const AppError = require('../../utils/app-error');
 const asyncHandler = require('../../utils/async-handler');
+const env = require('../../config/env');
 const validateRequest = require('../../middleware/validate-request');
 const { authenticate, requireExclusiveRole } = require('../../middleware/auth');
 const controller = require('./auth.controller');
@@ -47,10 +48,34 @@ const otpLimiter = rateLimit({
 });
 const login = (role, message) => asyncHandler(controller.loginFor(role, message));
 
+function adminRegistrationAccess(req, res, next) {
+  if (env.NODE_ENV === 'development' && env.ALLOW_DEV_ADMIN_REGISTRATION) {
+    const remoteAddress = req.socket.remoteAddress?.toLowerCase().replace(/^::ffff:/, '');
+    if (remoteAddress === '127.0.0.1' || remoteAddress === '::1') return next();
+    return next(new AppError(
+      'Development admin registration is available only from localhost',
+      403,
+      'DEV_ADMIN_REGISTRATION_LOCAL_ONLY'
+    ));
+  }
+
+  return authenticate(req, res, (error) => {
+    if (error) return next(error);
+    return requireExclusiveRole('admin')(req, res, next);
+  });
+}
+
 router.post('/register', registrationLimiter, validateRequest(registerSchema), asyncHandler(controller.registerCustomer));
 router.post('/provider/register', registrationLimiter, validateRequest(providerRegisterSchema), asyncHandler(controller.registerProvider));
+router.post(
+  '/admin/register',
+  registrationLimiter,
+  adminRegistrationAccess,
+  validateRequest(registerSchema),
+  asyncHandler(controller.registerAdmin)
+);
 
-router.post('/login', loginLimiter, validateRequest(loginSchema), login('customer', 'Customer signed in'));
+router.post('/login', loginLimiter, validateRequest(loginSchema), login(null, 'Signed in'));
 router.post('/provider/login', loginLimiter, validateRequest(loginSchema), login('provider', 'Provider signed in'));
 router.post('/admin/login', loginLimiter, validateRequest(loginSchema), login('admin', 'Admin signed in'));
 router.post('/refresh', asyncHandler(controller.refresh));

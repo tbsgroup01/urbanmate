@@ -96,12 +96,17 @@ export function EmptyState({ icon: Icon, title, description, action }) {
 export function Modal({ open, onClose, title, children, wide = false }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" onMouseDown={(event) => {
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose();
     }}>
-      <div className={`max-h-[90vh] w-full overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-7 ${wide ? 'max-w-3xl' : 'max-w-lg'}`}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        className={`modal-panel max-h-[90vh] w-full overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-7 ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
+      >
         <div className="mb-5 flex items-center justify-between gap-4">
-          <h2 className="text-xl font-extrabold tracking-tight text-slate-900">{title}</h2>
+          <h2 id="modal-title" className="text-xl font-extrabold tracking-tight text-slate-900">{title}</h2>
           <button type="button" onClick={onClose} className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Close dialog">×</button>
         </div>
         {children}

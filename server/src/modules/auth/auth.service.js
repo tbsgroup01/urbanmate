@@ -150,6 +150,39 @@ async function registerProvider(input, metadata) {
   return registerAccount(input, 'provider', metadata);
 }
 
+async function createAdminAccount(input) {
+  const account = await sequelize.transaction(async (transaction) => {
+    const role = await Role.findOne({ where: { name: 'admin' }, transaction });
+    if (!role) {
+      throw new AppError('admin role is not configured; run database seeders', 503, 'ROLE_NOT_CONFIGURED');
+    }
+
+    const user = await User.create({
+      fullName: input.fullName,
+      email: input.email,
+      phone: input.phone,
+      passwordHash: await bcrypt.hash(input.password, env.BCRYPT_SALT_ROUNDS),
+      status: 'active'
+    }, { transaction });
+
+    await UserRole.create({ userId: user.id, roleId: role.id }, { transaction });
+    return loadUserWithRoles(user.id, transaction);
+  });
+
+  return getUserSummary(account);
+}
+
+function resolveLoginRole(userRoles) {
+  if (userRoles.includes('admin')) {
+    return userRoles.some((role) => role !== 'admin') ? null : 'admin';
+  }
+  if (userRoles.includes('provider')) {
+    return userRoles.includes('customer') ? null : 'provider';
+  }
+  if (userRoles.includes('customer')) return 'customer';
+  return null;
+}
+
 async function login(input, expectedRole, metadata) {
   const user = await User.findOne({
     where: { email: input.email },
@@ -161,10 +194,11 @@ async function login(input, expectedRole, metadata) {
 
   const passwordMatches = await bcrypt.compare(input.password, user?.passwordHash || DUMMY_PASSWORD_HASH);
   const userRoles = user?.roles.map((role) => role.name) || [];
-  const hasConflictingRole = expectedRole === 'provider'
+  const loginRole = expectedRole || resolveLoginRole(userRoles);
+  const hasConflictingRole = loginRole === 'provider'
     ? userRoles.includes('customer')
-    : expectedRole === 'admin' && (userRoles.includes('customer') || userRoles.includes('provider'));
-  if (!user || !passwordMatches || !userRoles.includes(expectedRole) || hasConflictingRole) {
+    : loginRole === 'admin' && (userRoles.includes('customer') || userRoles.includes('provider'));
+  if (!user || !passwordMatches || !loginRole || !userRoles.includes(loginRole) || hasConflictingRole) {
     throw new AppError('Email or password is incorrect', 401, 'INVALID_CREDENTIALS');
   }
   if (user.status !== 'active') {
@@ -395,6 +429,8 @@ async function updateAccountStatus(userId, status) {
 module.exports = {
   registerCustomer,
   registerProvider,
+  createAdminAccount,
+  resolveLoginRole,
   login,
   refreshSession,
   revokeSession,

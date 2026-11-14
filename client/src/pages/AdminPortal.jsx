@@ -8,7 +8,6 @@ import {
   ClipboardList,
   PackagePlus,
   Plus,
-  Search,
   ShieldCheck,
   Users,
   Wrench
@@ -108,6 +107,8 @@ function ProviderManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
+  const [rejecting, setRejecting] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   async function load() {
     setLoading(true);
@@ -122,11 +123,16 @@ function ProviderManagement() {
   }
   useEffect(() => { load(); }, [status]);
 
-  async function decide(providerId, decision) {
+  async function decide(providerId, decision, reason) {
     setBusy(providerId);
     setError('');
     try {
-      await api.patch(`/providers/admin/applications/${providerId}/decision`, { status: decision });
+      await api.patch(`/providers/admin/applications/${providerId}/decision`, {
+        status: decision,
+        ...(decision === 'rejected' ? { rejectionReason: reason } : {})
+      });
+      setRejecting(null);
+      setRejectionReason('');
       await load();
     } catch (requestError) {
       setError(getErrorMessage(requestError));
@@ -150,7 +156,7 @@ function ProviderManagement() {
                 {provider.approvalStatus === 'pending' && (
                   <div className="flex gap-2">
                     <Button size="sm" disabled={busy === provider.id} onClick={() => decide(provider.id, 'approved')}><BadgeCheck size={14} /> Approve</Button>
-                    <Button size="sm" variant="danger" disabled={busy === provider.id} onClick={() => decide(provider.id, 'rejected')}>Reject</Button>
+                    <Button size="sm" variant="danger" disabled={busy === provider.id} onClick={() => { setRejecting(provider); setError(''); }}>Reject</Button>
                   </div>
                 )}
               </div>
@@ -159,6 +165,17 @@ function ProviderManagement() {
           ))}
         </div>
       ) : <EmptyState icon={BadgeCheck} title="No applications here" description="Provider applications will appear here as people join the network." />}
+      <Modal open={Boolean(rejecting)} onClose={() => setRejecting(null)} title="Reject provider application">
+        <form className="space-y-4" onSubmit={(event) => {
+          event.preventDefault();
+          if (rejecting) decide(rejecting.id, 'rejected', rejectionReason.trim());
+        }}>
+          <p className="text-sm leading-6 text-slate-500">Share a clear reason with {rejecting?.displayName || 'this applicant'} so they understand what needs to change.</p>
+          <Field label="Reason for rejection"><Textarea rows={4} minLength={3} maxLength={500} required value={rejectionReason} onChange={(event) => setRejectionReason(event.target.value)} placeholder="Explain what is missing or needs correction" /></Field>
+          {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+          <div className="flex justify-end gap-2"><Button type="button" variant="quiet" onClick={() => setRejecting(null)}>Keep application</Button><Button type="submit" variant="danger" disabled={Boolean(busy)}>Reject application</Button></div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { api, getErrorMessage } from '../lib/api';
-import { Button, Field, Input, Select, Textarea } from './ui';
+import { Button, Field, Input, Select } from './ui';
 
 export default function AddressEditor({ cities, onSaved, onCancel }) {
   const [values, setValues] = useState({

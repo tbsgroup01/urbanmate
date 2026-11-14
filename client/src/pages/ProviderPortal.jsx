@@ -26,6 +26,7 @@ import {
   Textarea,
   currency
 } from '../components/ui';
+import EmailVerification from '../components/EmailVerification';
 import { api, getErrorMessage } from '../lib/api';
 
 const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -317,7 +318,7 @@ function Earnings() {
   );
 }
 
-function ProviderProfile() {
+function ProviderProfile({ user, onUserUpdate }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -414,7 +415,9 @@ function ProviderProfile() {
             </div>
           </form>
         </Card>
-        <Card className="p-5 sm:p-6">
+        <div className="space-y-5">
+          <EmailVerification user={user} onVerified={onUserUpdate} />
+          <Card className="p-5 sm:p-6">
           <div className="flex items-center justify-between"><div><h3 className="font-extrabold text-slate-900">Verification documents</h3><p className="mt-1 text-xs text-slate-500">Private, secure upload · JPEG, PNG or PDF up to 10 MB</p></div><ShieldCheck className="text-emerald-700" size={20} /></div>
           <div className="mt-4 space-y-2">
             {(profile.documents || []).map((document) => (
@@ -442,19 +445,20 @@ function ProviderProfile() {
           </form>
           {error && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-xs text-rose-700">{error}</p>}
           {message && <p role="status" className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">{message}</p>}
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
   );
 }
 
-export default function ProviderPortal({ user, active, onTabChange }) {
+export default function ProviderPortal({ user, active, onTabChange, onUserUpdate }) {
   const content = useMemo(() => {
     if (active === 'requests' || active === 'active' || active === 'history') return <BookingList mode={active} />;
     if (active === 'availability') return <AvailabilityEditor />;
     if (active === 'earnings') return <Earnings />;
-    if (active === 'profile') return <ProviderProfile />;
+    if (active === 'profile') return <ProviderProfile user={user} onUserUpdate={onUserUpdate} />;
     return <Overview user={user} onNavigate={onTabChange} />;
-  }, [active, user, onTabChange]);
+  }, [active, user, onTabChange, onUserUpdate]);
   return content;
 }

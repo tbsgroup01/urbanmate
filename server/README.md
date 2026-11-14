@@ -19,7 +19,7 @@ Node.js and Express API for the home services marketplace. The backend is organi
    npm run db:seed
    ```
 
-4. Remove bootstrap admin credentials from `.env` after the seeder succeeds. The seeder refuses to add the admin role to an existing non-admin account. Admins have no public registration endpoint.
+4. Remove bootstrap admin credentials from `.env` after the seeder succeeds. The seeder refuses to add the admin role to an existing non-admin account. Additional admins can be created by an authenticated admin through `POST /api/v1/auth/admin/register`.
 5. Start the API:
 
    ```sh
@@ -48,9 +48,10 @@ Failures return `success: false`, a stable error `code`, a safe message, and a r
 |---|---|---|---|
 | POST | `/api/v1/auth/register` | Public | Register and sign in as a customer |
 | POST | `/api/v1/auth/provider/register` | Public | Register provider profile (starts pending approval) |
-| POST | `/api/v1/auth/login` | Public | Customer login |
-| POST | `/api/v1/auth/provider/login` | Public | Provider login |
-| POST | `/api/v1/auth/admin/login` | Public | Admin login; only provisioned admins can use it |
+| POST | `/api/v1/auth/admin/register` | Admin | Create another admin account |
+| POST | `/api/v1/auth/login` | Public | Sign in as any account type; returns the user's roles |
+| POST | `/api/v1/auth/provider/login` | Public | Provider-only login alias |
+| POST | `/api/v1/auth/admin/login` | Public | Admin-only login alias |
 | POST | `/api/v1/auth/refresh` | Refresh cookie | Rotate refresh token and issue an access token |
 | POST | `/api/v1/auth/logout` | Refresh cookie | Revoke refresh token |
 | GET | `/api/v1/auth/me` | Authenticated | Return the current account and roles |
@@ -85,7 +86,24 @@ Failures return `success: false`, a stable error `code`, a safe message, and a r
 | PATCH | `/api/v1/providers/admin/applications/:providerId/decision` | Admin | Approve, reject, or suspend an application |
 | PATCH | `/api/v1/providers/admin/documents/:documentId/review` | Admin | Approve or reject an uploaded document |
 
-Customer registration only grants the customer role. Provider registration only grants the provider role and creates a provider profile in pending approval. Admin role assignment is only available to the controlled bootstrap seeder; there is no public admin registration. Login endpoints enforce the expected role. Use `authorize` for general role checks, `authorizeExclusive` for provider/admin-only surfaces, and `requireApprovedProvider` for operations that require an approved provider profile. Suspended accounts are denied on every authenticated request, and their refresh sessions are revoked when suspended.
+Customer registration only grants the customer role. Provider registration only grants the provider role and creates a provider profile in pending approval. The first admin is created by the controlled bootstrap seeder; subsequent admin accounts require an authenticated admin and cannot be registered publicly. For local testing only, setting `ALLOW_DEV_ADMIN_REGISTRATION=true` in `.env` allows admin registration without a token when the request arrives over a loopback connection (`127.0.0.1` or `::1`). This option defaults to false and is ignored unless `NODE_ENV=development`; production always requires an admin token. Do not enable this option on a deployed server. The shared login endpoint returns the account roles so the client can select the appropriate workspace. Role-specific login aliases remain available for integrations. Use `authorize` for general role checks, `authorizeExclusive` for provider/admin-only surfaces, and `requireApprovedProvider` for operations that require an approved provider profile. Suspended accounts are denied on every authenticated request, and their refresh sessions are revoked when suspended.
+
+To add another admin, send `POST /api/v1/auth/admin/register` with an existing admin's access token and the standard `fullName`, `email`, and `password` registration fields:
+
+```sh
+curl -X POST http://localhost:4000/api/v1/auth/admin/register \
+  -H "Authorization: Bearer <admin-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"New Admin","email":"admin@example.com","password":"<strong-password>"}'
+```
+
+For local development with `ALLOW_DEV_ADMIN_REGISTRATION=true`, the same request can be sent without the `Authorization` header from the local machine:
+
+```sh
+curl -X POST http://localhost:4000/api/v1/auth/admin/register \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"Local Admin","email":"admin@example.com","password":"<strong-password>"}'
+```
 
 ### Booking and scheduling workflow
 

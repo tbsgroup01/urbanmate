@@ -58,3 +58,38 @@ button {
   background: #94a3a0;
   background-clip: padding-box;
 }
+
+.modal-backdrop {
+  animation: modal-fade-in 180ms ease-out both;
+}
+
+.modal-panel {
+  animation: modal-slide-in 220ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.auth-step {
+  animation: auth-step-in 180ms ease-out both;
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-slide-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes auth-step-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop,
+  .modal-panel,
+  .auth-step {
+    animation-duration: 1ms;
+  }
+}
