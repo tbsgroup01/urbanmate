@@ -82,7 +82,11 @@ function Overview({ user, onNavigate }) {
   const requests = bookings.filter((booking) => booking.status === 'assigned');
   const active = bookings.filter((booking) => activeStatuses.includes(booking.status));
   const currencyEntries = Object.entries(earnings?.currencies || {});
-  const pendingTotal = currencyEntries.reduce((sum, [, value]) => sum + Number(value.pending || 0), 0);
+  const totalEarnings = currencyEntries.reduce(
+    (sum, [, value]) => sum + Number(value.pending || 0) + Number(value.payable || 0) + Number(value.paid || 0),
+    0
+  );
+  const payableTotal = currencyEntries.reduce((sum, [, value]) => sum + Number(value.payable || 0), 0);
 
   if (loading) return <PageLoader label="Loading your work overview…" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -123,7 +127,7 @@ function Overview({ user, onNavigate }) {
         {[
           { title: 'New requests', value: requests.length, sub: 'Need your response', icon: CalendarDays, color: 'bg-amber-50 text-amber-700', tab: 'requests' },
           { title: 'Active jobs', value: active.length, sub: 'Confirmed or underway', icon: Wrench, color: 'bg-sky-50 text-sky-700', tab: 'active' },
-          { title: 'Pending earnings', value: currency(pendingTotal), sub: 'Across all currencies', icon: Wallet, color: 'bg-emerald-50 text-emerald-700', tab: 'earnings' },
+          { title: 'Total earnings', value: currency(totalEarnings), sub: payableTotal > 0 ? `${currency(payableTotal)} ready to payout` : 'Across all jobs', icon: Wallet, color: 'bg-emerald-50 text-emerald-700', tab: 'earnings' },
           { title: 'Jobs completed', value: bookings.filter((booking) => booking.status === 'completed').length, sub: 'Service history', icon: BadgeCheck, color: 'bg-violet-50 text-violet-700', tab: 'history' }
         ].map(({ title, value, sub, icon: Icon, color, tab }) => (
           <Card key={title} className="p-5">
@@ -232,7 +236,7 @@ function BookingList({ mode }) {
                       Booking {booking.bookingNumber} · <span className="font-bold text-slate-700">{new Date(booking.scheduledStart).toLocaleString()}</span>
                     </p>
                     <p className="mt-1.5 text-sm font-extrabold text-slate-900">
-                      {currency(booking.total, booking.currency || 'INR')} <span className="font-normal text-xs text-slate-400">· Customer payout</span>
+                      {currency(booking.total, booking.currency || 'INR')} <span className="font-normal text-xs text-slate-400">· Service earning</span>
                     </p>
 
                     {/* Customer & Location Details Card */}
@@ -640,25 +644,153 @@ function Earnings() {
 
   if (loading) return <PageLoader label="Loading your earnings…" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
+
   const currencies = Object.entries(earnings?.currencies || {});
+  const items = earnings?.items || [];
+
   return (
-    <div>
-      <SectionHeading eyebrow="Your business" title="Earnings" description="A clear breakdown of booking earnings and settlement status." />
+    <div className="space-y-6">
+      <SectionHeading
+        eyebrow="Your business"
+        title="Earnings & payouts"
+        description="A clear breakdown of booking earnings, available balances, and settlement ledger."
+      />
+
       {currencies.length ? (
         <div className="grid gap-4 lg:grid-cols-2">
-          {currencies.map(([code, value]) => (
-            <Card key={code} className="p-6">
-              <div className="flex items-center justify-between"><div><p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">{code} earnings</p><p className="mt-1 text-2xl font-black text-slate-900">{currency(Number(value.pending || 0) + Number(value.payable || 0) + Number(value.paid || 0), code)}</p></div><span className="grid h-11 w-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><Wallet size={21} /></span></div>
-              <div className="mt-6 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
-                {[['Pending', value.pending], ['Available', value.payable], ['Paid out', value.paid]].map(([label, amount]) => <div key={label}><p className="text-[11px] text-slate-400">{label}</p><p className="mt-1 text-sm font-extrabold text-slate-800">{currency(amount, code)}</p></div>)}
-              </div>
-            </Card>
-          ))}
+          {currencies.map(([code, value]) => {
+            const total = Number(value.pending || 0) + Number(value.payable || 0) + Number(value.paid || 0);
+            return (
+              <Card key={code} className="p-6 border border-slate-200/90 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-400">{code} earnings</p>
+                    <p className="mt-1 text-3xl font-black text-slate-900">{currency(total, code)}</p>
+                  </div>
+                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100">
+                    <Wallet size={24} />
+                  </span>
+                </div>
+                <div className="mt-6 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
+                  {[
+                    { label: 'Available to payout', amount: value.payable, tone: 'text-emerald-700 font-extrabold' },
+                    { label: 'Pending in-progress', amount: value.pending, tone: 'text-amber-700 font-bold' },
+                    { label: 'Paid out', amount: value.paid, tone: 'text-slate-600 font-bold' }
+                  ].map(({ label, amount, tone }) => (
+                    <div key={label}>
+                      <p className="text-[11px] font-semibold text-slate-400">{label}</p>
+                      <p className={`mt-1 text-sm ${tone}`}>{currency(amount, code)}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            );
+          })}
         </div>
-      ) : <EmptyState icon={Wallet} title="Your first earning is on its way" description="Once your first completed booking is paid, your earnings will be tracked here." />}
+      ) : (
+        <EmptyState
+          icon={Wallet}
+          title="Your first earning is on its way"
+          description="Once your first completed booking is recorded, your earnings will be tracked here."
+        />
+      )}
+
+      {/* Itemized Service Earnings Ledger */}
+      <div className="mt-7">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h3 className="text-base font-black text-slate-900">Service earnings ledger</h3>
+            <p className="text-xs text-slate-500">Every completed job credited to your provider balance.</p>
+          </div>
+          {items.length > 0 && (
+            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+              {items.length} {items.length === 1 ? 'transaction' : 'transactions'}
+            </span>
+          )}
+        </div>
+
+        {items.length ? (
+          <div className="space-y-3">
+            {items.map((item) => {
+              const isPayable = item.status === 'payable';
+              const isPaid = item.status === 'paid';
+              const isPending = item.status === 'pending';
+
+              return (
+                <Card
+                  key={item.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:border-slate-300 transition"
+                >
+                  <div className="flex items-start gap-3.5">
+                    <span
+                      className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-black ${
+                        isPayable
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : isPaid
+                          ? 'bg-slate-100 text-slate-700'
+                          : isPending
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-rose-100 text-rose-800'
+                      }`}
+                    >
+                      <Check size={18} strokeWidth={2.5} />
+                    </span>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                          {item.serviceName || 'Service booking'}
+                        </h4>
+                        <Badge
+                          tone={
+                            isPayable ? 'green' : isPaid ? 'blue' : isPending ? 'amber' : 'rose'
+                          }
+                        >
+                          {isPayable ? 'Available for payout' : isPaid ? 'Paid out' : isPending ? 'Pending job' : 'Reversed'}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500 font-medium">
+                        Booking {item.bookingNumber} · {new Date(item.completedAt || item.scheduledStart || item.createdAt).toLocaleString()}
+                      </p>
+                      {item.customerName && (
+                        <p className="mt-1 text-xs text-slate-400">
+                          Customer: <span className="font-semibold text-slate-600">{item.customerName}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="text-left sm:text-right shrink-0">
+                    <p className="text-base sm:text-lg font-black text-emerald-700">
+                      +{currency(item.amount, item.currency)}
+                    </p>
+                    <p className="text-[11px] font-medium text-slate-400">
+                      {isPayable ? 'Ready in balance' : isPaid ? 'Settled to bank' : isPending ? 'Awaiting completion' : 'Refunded'}
+                    </p>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <Card className="p-8 text-center bg-slate-50 border-dashed border-slate-200">
+            <p className="text-sm font-bold text-slate-700">No earnings transactions yet</p>
+            <p className="text-xs text-slate-400 mt-1">
+              Complete a service job and have the customer confirm completion to record your first earning.
+            </p>
+          </Card>
+        )}
+      </div>
+
       <Card className="mt-5 flex flex-col gap-4 bg-emerald-50/70 p-5 sm:flex-row sm:items-center">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-emerald-700"><FileCheck2 size={19} /></span>
-        <div><h3 className="text-sm font-extrabold text-slate-800">Transparent earnings</h3><p className="mt-1 text-xs leading-5 text-slate-500">Provider earnings are recorded against completed, paid bookings. Contact support if a settlement needs review.</p></div>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-emerald-700">
+          <FileCheck2 size={19} />
+        </span>
+        <div>
+          <h3 className="text-sm font-extrabold text-slate-800">Transparent & prompt settlements</h3>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Provider earnings are recorded automatically upon completed services. Payout balances are scheduled for direct transfer to your registered account.
+          </p>
+        </div>
       </Card>
     </div>
   );

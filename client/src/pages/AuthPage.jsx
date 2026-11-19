@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
@@ -79,6 +80,7 @@ export default function AuthPage({
   onResetComplete,
   onNavigateHome
 }) {
+  const navigate = useNavigate();
   const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'forgot' | 'reset'
   const [role, setRole] = useState(initialRole); // 'customer' | 'provider'
   const [busy, setBusy] = useState(false);
@@ -86,6 +88,14 @@ export default function AuthPage({
   const [providerDetailsOpen, setProviderDetailsOpen] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
+
+  useEffect(() => {
+    setRole(initialRole);
+  }, [initialRole]);
 
   const [values, setValues] = useState({
     fullName: '',
@@ -114,6 +124,15 @@ export default function AuthPage({
     setError('');
     setNotice('');
     setShowPassword(false);
+    if (nextMode === 'login') navigate('/login');
+    else if (nextMode === 'register') navigate(role === 'provider' ? '/register/provider' : '/register');
+    else if (nextMode === 'forgot') navigate('/forgot-password');
+    else if (nextMode === 'reset') navigate('/reset-password');
+  }
+
+  function handleNavigateHome() {
+    if (onNavigateHome) onNavigateHome();
+    else navigate('/');
   }
 
   function optionalValue(key) {
@@ -224,14 +243,14 @@ export default function AuthPage({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <button
             type="button"
-            onClick={onNavigateHome}
+            onClick={handleNavigateHome}
             className="flex items-center gap-2 group text-slate-600 hover:text-slate-900 transition"
           >
             <Brand />
           </button>
           <button
             type="button"
-            onClick={onNavigateHome}
+            onClick={handleNavigateHome}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-violet-700 transition px-3 py-1.5 rounded-lg hover:bg-violet-50"
           >
             <ArrowLeft size={14} /> Back to marketplace
@@ -241,7 +260,7 @@ export default function AuthPage({
 
       <div className="flex-1 flex items-stretch">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-center">
-          
+
           {/* Left Hero / Brand Card (Desktop & Tablet) */}
           <div className="hidden lg:flex w-full lg:w-5/12 flex-col justify-between self-stretch rounded-3xl bg-gradient-to-br from-[#12092b] via-[#1f1142] to-[#0c1829] p-9 xl:p-12 text-white relative overflow-hidden shadow-2xl">
             {/* Ambient background glows */}
@@ -312,29 +331,27 @@ export default function AuthPage({
           {/* Right Form Card */}
           <div className="w-full lg:w-7/12 max-w-xl">
             <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xl p-6 sm:p-10 transition-all">
-              
+
               {/* Header Mode Toggle (Sign In vs Create Account) */}
               {(mode === 'login' || mode === 'register') && (
                 <div className="flex p-1 bg-slate-100 rounded-2xl mb-8">
                   <button
                     type="button"
                     onClick={() => switchMode('login')}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                      mode === 'login'
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${mode === 'login'
                         ? 'bg-white text-violet-900 shadow-sm'
                         : 'text-slate-500 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     Sign In
                   </button>
                   <button
                     type="button"
                     onClick={() => switchMode('register')}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                      mode === 'register'
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${mode === 'register'
                         ? 'bg-white text-violet-900 shadow-sm'
                         : 'text-slate-500 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     Create Account
                   </button>
@@ -378,11 +395,10 @@ export default function AuthPage({
                             setError('');
                             setNotice('');
                           }}
-                          className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all ${
-                            isSelected
+                          className={`flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all ${isSelected
                               ? 'border-violet-600 bg-violet-50/60 ring-2 ring-violet-600/10'
                               : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
-                          }`}
+                            }`}
                         >
                           <div className={`p-2 rounded-xl shrink-0 ${isSelected ? 'bg-violet-700 text-white' : 'bg-slate-100 text-slate-600'}`}>
                             <Icon size={18} />

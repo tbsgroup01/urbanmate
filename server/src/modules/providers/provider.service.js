@@ -435,6 +435,45 @@ async function setOnlineStatus(userId, isOnline) {
 
 async function getEarnings(userId) {
   const provider = await findProvider(userId);
+
+  // Sync any provider bookings to guarantee existing completed and active jobs reflect in commissions
+  const providerBookings = await Booking.findAll({
+    where: { providerId: provider.id },
+    attributes: ['id', 'providerId', 'total', 'currency', 'status']
+  });
+
+  for (const b of providerBookings) {
+    const targetStatus =
+      b.status === 'completed'
+        ? 'payable'
+        : b.status === 'cancelled'
+        ? 'reversed'
+        : ['assigned', 'confirmed', 'in_progress', 'provider_completed'].includes(b.status)
+        ? 'pending'
+        : null;
+
+    if (!targetStatus) continue;
+
+    const existing = await Commission.findOne({ where: { bookingId: b.id } });
+    const amount = Number(b.total || 0);
+    const curr = b.currency && b.currency !== 'USD' ? b.currency : 'INR';
+
+    if (existing) {
+      if (existing.status !== targetStatus || Number(existing.amount) !== amount || existing.currency !== curr) {
+        await existing.update({ status: targetStatus, amount, currency: curr });
+      }
+    } else {
+      await Commission.create({
+        bookingId: b.id,
+        providerId: provider.id,
+        amount,
+        ratePercent: 0,
+        status: targetStatus,
+        currency: curr
+      });
+    }
+  }
+
   const rows = await Commission.findAll({
     where: { providerId: provider.id },
     attributes: ['currency', 'status', [fn('SUM', col('amount')), 'amount'], [fn('COUNT', col('id')), 'count']],
@@ -448,7 +487,38 @@ async function getEarnings(userId) {
     currencies[row.currency][row.status] = amount;
     if (row.status === 'paid') currencies[row.currency].totalPaid = amount;
   }
-  return { providerId: provider.id, currencies };
+
+  // Retrieve itemized earnings ledger sorted by latest completed / created
+  const ledger = await Commission.findAll({
+    where: { providerId: provider.id },
+    include: [
+      {
+        model: Booking,
+        as: 'booking',
+        attributes: ['id', 'bookingNumber', 'serviceNameSnapshot', 'scheduledStart', 'completedAt', 'status'],
+        include: [{ model: User, as: 'customer', attributes: ['id', 'fullName', 'phone'] }]
+      }
+    ],
+    order: [['createdAt', 'DESC']]
+  });
+
+  const items = ledger.map((item) => ({
+    id: item.id,
+    bookingId: item.bookingId,
+    bookingNumber: item.booking?.bookingNumber,
+    serviceName: item.booking?.serviceNameSnapshot,
+    customerName: item.booking?.customer?.fullName,
+    customerPhone: item.booking?.customer?.phone,
+    scheduledStart: item.booking?.scheduledStart,
+    completedAt: item.booking?.completedAt,
+    amount: Number(item.amount),
+    currency: item.currency,
+    status: item.status,
+    ratePercent: Number(item.ratePercent || 0),
+    createdAt: item.createdAt
+  }));
+
+  return { providerId: provider.id, currencies, items };
 }
 
 async function getProviderReviews(providerId, { page, limit, rating }) {

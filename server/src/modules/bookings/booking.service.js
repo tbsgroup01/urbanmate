@@ -17,7 +17,8 @@ const {
   ServicePricingRule,
   ProviderService,
   Area,
-  User
+  User,
+  Commission
 } = require('../../models');
 const AppError = require('../../utils/app-error');
 const { calculateEffectivePrice, roundPrice } = require('../catalog/pricing');
@@ -211,6 +212,47 @@ async function getProviderUserId(providerId, transaction) {
   return provider?.userId || null;
 }
 
+async function syncBookingCommission(booking, transaction) {
+  if (!booking || !booking.providerId) return;
+  const targetStatus =
+    booking.status === 'completed'
+      ? 'payable'
+      : booking.status === 'cancelled'
+      ? 'reversed'
+      : ['assigned', 'confirmed', 'in_progress', 'provider_completed'].includes(booking.status)
+      ? 'pending'
+      : null;
+
+  if (!targetStatus) return;
+
+  const amount = Number(booking.total || 0);
+  const currency = booking.currency && booking.currency !== 'USD' ? booking.currency : 'INR';
+
+  const existing = await Commission.findOne({
+    where: { bookingId: booking.id },
+    transaction
+  });
+
+  if (existing) {
+    await existing.update({
+      providerId: booking.providerId,
+      status: targetStatus,
+      amount,
+      currency
+    }, { transaction });
+  } else {
+    await Commission.create({
+      id: crypto.randomUUID(),
+      bookingId: booking.id,
+      providerId: booking.providerId,
+      amount,
+      ratePercent: 0,
+      status: targetStatus,
+      currency
+    }, { transaction });
+  }
+}
+
 async function setBookingStatus(booking, actorUserId, status, transaction, options = {}) {
   const previousStatus = booking.status;
   booking.status = status;
@@ -221,6 +263,7 @@ async function setBookingStatus(booking, actorUserId, status, transaction, optio
   if (status === 'completed') booking.completedAt = new Date();
   await booking.save({ transaction });
   await addHistory(booking, actorUserId, previousStatus, status, transaction, options.reason, options.metadata);
+  await syncBookingCommission(booking, transaction);
   return previousStatus;
 }
 
@@ -269,6 +312,8 @@ async function createBooking(customerId, input) {
       currency: env.DEFAULT_CURRENCY,
       customerNotes: input.customerNotes || null
     }, { transaction });
+
+    await syncBookingCommission(booking, transaction);
 
     const bookingItems = [
       ...(context.selectedPackage ? [{
