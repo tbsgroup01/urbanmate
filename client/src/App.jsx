@@ -12,6 +12,7 @@ import {
   Menu,
   PackageSearch,
   Shield,
+  ShoppingBag,
   Sparkles,
   UserRound,
   Users,
@@ -78,6 +79,15 @@ function getPasswordResetToken() {
   return new URLSearchParams(window.location.search).get('token') || '';
 }
 
+function getSavedCart() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('urbanmate_cart') || '[]');
+    return Array.isArray(saved) ? saved : [];
+  } catch {
+    return [];
+  }
+}
+
 function PortalNav({ portal, active, onChange, mobile = false }) {
   return (
     <nav className={mobile ? 'grid grid-cols-4 gap-1' : 'space-y-1'}>
@@ -100,7 +110,7 @@ function PortalNav({ portal, active, onChange, mobile = false }) {
   );
 }
 
-function AppHeader({ user, portal, openAuth, onLogout, onToggleMenu, onVerifyEmail }) {
+function AppHeader({ user, portal, active, openAuth, onLogout, onToggleMenu, onVerifyEmail, onNavigate, cartCount }) {
   const firstName = user?.fullName?.split(' ')[0] || 'there';
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/75 bg-white/90 backdrop-blur-xl">
@@ -119,11 +129,23 @@ function AppHeader({ user, portal, openAuth, onLogout, onToggleMenu, onVerifyEma
 
         {!user ? (
           <div className="flex items-center gap-2 sm:gap-3">
-            <button type="button" onClick={() => openAuth('provider', 'register')} className="hidden text-sm font-semibold text-slate-600 transition hover:text-emerald-700 sm:block">Become a pro</button>
-            <Button size="sm" onClick={() => openAuth('customer')}>Sign in <ArrowUpRight size={15} /></Button>
+            <nav className="mr-3 hidden items-center gap-1 md:flex" aria-label="Main navigation">
+              <button type="button" onClick={() => onNavigate('home')} className={`rounded-lg px-3 py-2 text-xs font-bold transition ${active === 'home' ? 'bg-violet-100 text-violet-800' : 'text-slate-600 hover:bg-violet-50 hover:text-violet-800'}`}>Home</button>
+              <button type="button" onClick={() => onNavigate('services')} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${active === 'services' ? 'bg-violet-100 text-violet-800' : 'text-slate-600 hover:bg-violet-50 hover:text-violet-800'}`}>Services</button>
+              <button type="button" onClick={() => openAuth('provider', 'register')} className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-violet-50 hover:text-violet-800">Become a partner</button>
+            </nav>
+            <button type="button" onClick={() => onNavigate('cart')} className="relative grid h-10 w-10 place-items-center rounded-xl text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-800" aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`}>
+              <ShoppingBag size={19} />
+              {cartCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-700 px-1 text-[10px] font-bold text-white">{cartCount}</span>}
+            </button>
+            <Button size="sm" className="bg-violet-700 hover:bg-violet-800" onClick={() => openAuth('customer')}>Login / Sign up <ArrowUpRight size={15} /></Button>
           </div>
         ) : (
           <div className="flex items-center gap-2 sm:gap-4">
+            {portal === 'customer' && <button type="button" onClick={() => onNavigate('cart')} className="relative grid h-10 w-10 place-items-center rounded-xl text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-800" aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`}>
+              <ShoppingBag size={19} />
+              {cartCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-700 px-1 text-[10px] font-bold text-white">{cartCount}</span>}
+            </button>}
             <div className="hidden text-right sm:block">
               <p className="text-sm font-bold text-slate-800">Hi, {firstName}</p>
               <p className="text-[11px] capitalize text-slate-400">{portal} account</p>
@@ -154,115 +176,6 @@ function AppHeader({ user, portal, openAuth, onLogout, onToggleMenu, onVerifyEma
   );
 }
 
-function PublicLanding({ openAuth }) {
-  const categories = [
-    { title: 'Home cleaning', caption: 'A fresh start, every time', icon: '✳', tint: 'bg-lime-100 text-lime-800' },
-    { title: 'Plumbing', caption: 'Repairs without the rush', icon: '⌁', tint: 'bg-sky-100 text-sky-800' },
-    { title: 'Electrical', caption: 'Safe, skilled, sorted', icon: 'ϟ', tint: 'bg-amber-100 text-amber-800' },
-    { title: 'Appliance repair', caption: 'Keep life moving', icon: '⌂', tint: 'bg-violet-100 text-violet-800' }
-  ];
-  return (
-    <main>
-      <section className="relative overflow-hidden bg-[#eff5ed]">
-        <div className="absolute -right-36 -top-32 h-[540px] w-[540px] rounded-full border border-emerald-900/5" />
-        <div className="absolute -right-16 -top-10 h-[400px] w-[400px] rounded-full border border-emerald-900/5" />
-        <div className="mx-auto grid max-w-[1440px] items-center gap-12 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:px-14 lg:py-24">
-          <div className="relative z-10 max-w-2xl">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-900/10 bg-white/70 px-3.5 py-2 text-xs font-bold text-emerald-900">
-              <Sparkles size={14} /> GOOD HANDS. RIGHT AT HOME.
-            </div>
-            <h1 className="text-5xl font-black leading-[1.04] tracking-[-0.055em] text-slate-900 sm:text-6xl xl:text-7xl">
-              More ease in
-              <span className="block font-serif font-medium italic text-emerald-700">everyday living.</span>
-            </h1>
-            <p className="mt-6 max-w-lg text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
-              Find a trusted local expert for the little fixes and big resets that make your place feel like home.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button size="lg" onClick={() => openAuth('customer')}>Explore services <ArrowUpRight size={17} /></Button>
-              <Button variant="secondary" size="lg" onClick={() => openAuth('provider', 'register')}>Join as a professional</Button>
-            </div>
-            <div className="mt-9 flex items-center gap-4 text-xs font-semibold text-slate-500">
-              <div className="flex -space-x-2">
-                {['A', 'M', 'R', 'S'].map((letter, index) => (
-                  <span key={letter} className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-[#eff5ed] text-[10px] font-black text-white ${['bg-emerald-700', 'bg-amber-600', 'bg-slate-700', 'bg-rose-500'][index]}`}>{letter}</span>
-                ))}
-              </div>
-              <span>Local expertise, thoughtfully matched</span>
-            </div>
-          </div>
-
-          <div className="relative mx-auto w-full max-w-[520px]">
-            <div className="absolute inset-6 rounded-[38%] bg-emerald-200/50 blur-3xl" />
-            <div className="relative overflow-hidden rounded-[32px] bg-[#dce9d5] p-5 sm:p-7">
-              <div className="absolute right-8 top-8 h-20 w-20 rounded-full bg-amber-200/80" />
-              <div className="relative flex min-h-[330px] items-center justify-center sm:min-h-[390px]">
-                <div className="absolute bottom-3 left-[9%] right-[8%] h-5 rounded-full bg-emerald-900/10 blur-md" />
-                <div className="relative z-10 grid h-64 w-64 place-items-center rounded-[42%] border border-white/70 bg-gradient-to-br from-white/80 to-emerald-100/70 shadow-[0_35px_80px_-40px_rgba(16,75,48,0.42)] sm:h-72 sm:w-72">
-                  <div className="grid h-44 w-44 place-items-center rounded-[36%] bg-white shadow-xl shadow-emerald-900/10 sm:h-52 sm:w-52">
-                    <div className="relative flex h-28 w-28 items-center justify-center rounded-[30px] bg-emerald-700 text-white sm:h-32 sm:w-32">
-                      <Sparkles size={44} strokeWidth={1.5} />
-                      <span className="absolute -right-3 -top-2 flex h-10 w-10 items-center justify-center rounded-full bg-amber-300 text-xl text-amber-900 shadow-md">⌂</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="absolute left-1 top-10 rounded-2xl bg-white p-3.5 shadow-lg shadow-emerald-900/10 sm:left-0">
-                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Your home, handled</span>
-                  <span className="flex items-center gap-2 text-sm font-extrabold text-slate-800"><span className="text-emerald-600">●</span> Trusted local pros</span>
-                </div>
-                <div className="absolute bottom-7 right-0 rounded-2xl bg-white p-3.5 shadow-lg shadow-emerald-900/10">
-                  <span className="flex items-center gap-2 text-sm font-extrabold text-slate-800"><span className="rounded-lg bg-amber-100 p-1.5 text-amber-700">✦</span> Care in the details</span>
-                  <span className="mt-1 block pl-9 text-[11px] text-slate-400">Easy booking. Thoughtful service.</span>
-                </div>
-              </div>
-            </div>
-            <div className="absolute -bottom-5 left-8 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-lg">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">The Urbanmate promise</p>
-              <p className="mt-1 text-sm font-extrabold text-slate-800">A little less to worry about.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-[1440px] px-5 py-14 sm:px-8 lg:px-14 lg:py-20">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-700">A good place to start</p>
-            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">Care for every corner.</h2>
-          </div>
-          <button type="button" onClick={() => openAuth('customer')} className="text-sm font-bold text-emerald-700 hover:text-emerald-900">See all services <span aria-hidden="true">→</span></button>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.map((category) => (
-            <button
-              type="button"
-              key={category.title}
-              onClick={() => openAuth('customer')}
-              className="group rounded-2xl border border-slate-200 bg-white p-5 text-left transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-900/5"
-            >
-              <span className={`mb-7 flex h-12 w-12 items-center justify-center rounded-2xl text-2xl ${category.tint}`}>{category.icon}</span>
-              <span className="block font-extrabold text-slate-900">{category.title}</span>
-              <span className="mt-1 block text-sm text-slate-500">{category.caption}</span>
-              <span className="mt-5 block text-sm font-bold text-emerald-700 opacity-0 transition group-hover:opacity-100">Explore →</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto mb-16 max-w-[1440px] px-5 sm:px-8 lg:px-14">
-        <div className="flex flex-col items-start justify-between gap-6 rounded-3xl bg-[#163d30] p-7 text-white sm:flex-row sm:items-center sm:p-10">
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-200">For skilled professionals</p>
-            <h2 className="mt-2 text-2xl font-extrabold tracking-tight">Good work deserves a better platform.</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/75">Grow your business, build trusted relationships, and stay in control of your schedule.</p>
-          </div>
-          <Button variant="secondary" onClick={() => openAuth('provider', 'register')}>Join Urbanmate <ArrowUpRight size={16} /></Button>
-        </div>
-      </section>
-    </main>
-  );
-}
-
 function App() {
   const [user, setUser] = useState(null);
   const [portal, setPortal] = useState('customer');
@@ -275,6 +188,11 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [authError, setAuthError] = useState('');
   const [emailVerifyOpen, setEmailVerifyOpen] = useState(false);
+  const [cartItems, setCartItems] = useState(getSavedCart);
+
+  useEffect(() => {
+    localStorage.setItem('urbanmate_cart', JSON.stringify(cartItems));
+  }, [cartItems]);
 
   useEffect(() => {
     if (!getAccessToken()) return;
@@ -298,6 +216,14 @@ function App() {
   }, []);
 
   const availablePortals = useMemo(() => getUserRoles(user), [user]);
+  function navigateCustomer(section) {
+    setActive(section);
+    if (!user) {
+      const target = section === 'services' ? 'customer-services' : section === 'home' ? 'customer-home' : 'customer-page';
+      window.setTimeout(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth' }), 0);
+    }
+  }
+
   function openAuth(role = 'customer', mode = 'login') {
     setAuthRole(role);
     setAuthMode(mode);
@@ -339,7 +265,17 @@ function App() {
     ? <ProviderPortal user={user} active={active} onTabChange={setActive} onUserUpdate={setUser} />
     : portal === 'admin'
       ? <AdminPortal user={user} active={active} onTabChange={setActive} />
-      : <CustomerPortal user={user} active={active} onTabChange={setActive} onSignIn={() => openAuth('customer')} onUserUpdate={setUser} />;
+      : <CustomerPortal
+        user={user}
+        active={active}
+        onTabChange={setActive}
+        onSignIn={() => openAuth('customer')}
+        onUserUpdate={setUser}
+        cartItems={cartItems}
+        onAddToCart={(item) => setCartItems((current) => [...current.filter((entry) => entry.serviceId !== item.serviceId), item])}
+        onRemoveFromCart={(serviceId) => setCartItems((current) => current.filter((entry) => entry.serviceId !== serviceId))}
+        onBecomePartner={() => openAuth('provider', 'register')}
+      />;
 
   if (booting) return <PageLoader label="Securing your Urbanmate session…" />;
 
@@ -348,10 +284,13 @@ function App() {
       <AppHeader
         user={user}
         portal={portal}
+        active={active}
         openAuth={openAuth}
         onLogout={logout}
         onToggleMenu={() => setMenuOpen((value) => !value)}
         onVerifyEmail={() => setEmailVerifyOpen(true)}
+        onNavigate={navigateCustomer}
+        cartCount={cartItems.length}
       />
       {user ? (
         <div className="mx-auto flex max-w-[1440px] gap-7 px-4 sm:px-7 xl:px-10">
@@ -376,16 +315,56 @@ function App() {
             {portalContent}
           </main>
         </div>
-      ) : <PublicLanding openAuth={openAuth} />}
+      ) : (
+        <main id="customer-page" className="mx-auto max-w-[1440px] px-4 pb-14 pt-5 sm:px-7 lg:px-10">
+          <CustomerPortal
+            user={null}
+            active={active}
+            onTabChange={setActive}
+            onSignIn={() => openAuth('customer')}
+            onUserUpdate={setUser}
+            cartItems={cartItems}
+            onAddToCart={(item) => setCartItems((current) => [...current.filter((entry) => entry.serviceId !== item.serviceId), item])}
+            onRemoveFromCart={(serviceId) => setCartItems((current) => current.filter((entry) => entry.serviceId !== serviceId))}
+            onBecomePartner={() => openAuth('provider', 'register')}
+          />
+        </main>
+      )}
       {user && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white px-2 py-1.5 lg:hidden">
           <PortalNav portal={portal} active={active} onChange={setActive} mobile />
         </div>
       )}
-      <footer className="border-t border-slate-200 bg-white px-5 py-6 text-center text-xs text-slate-400">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 sm:flex-row">
+      <footer className="bg-[#1d123d] px-5 py-9 text-violet-100 sm:px-8">
+        <div className="mx-auto grid max-w-[1360px] gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.8fr_1fr]">
+          <div>
+            <div className="flex items-center gap-3"><Brand dark /><span className="text-[10px] font-semibold text-violet-200">Home services, simplified.</span></div>
+            <p className="mt-4 max-w-xs text-xs leading-5 text-violet-200/75">A thoughtful way to find local help for cleaning, repairs, and the little things that make a place feel like home.</p>
+            <div className="mt-4 flex items-center gap-2 text-violet-200/80"><Shield size={14} /><span className="text-[10px]">Your account and bookings stay protected.</span></div>
+          </div>
+          {(!user || portal === 'customer') ? (
+            <div>
+              <h2 className="text-xs font-extrabold text-white">Explore</h2>
+              <div className="mt-3 space-y-2">
+                <button type="button" onClick={() => navigateCustomer('home')} className="block text-left text-xs text-violet-200/75 transition hover:text-white">Home</button>
+                <button type="button" onClick={() => navigateCustomer('services')} className="block text-left text-xs text-violet-200/75 transition hover:text-white">Services</button>
+                {user && <button type="button" onClick={() => navigateCustomer('bookings')} className="block text-left text-xs text-violet-200/75 transition hover:text-white">My bookings</button>}
+              </div>
+            </div>
+          ) : <div><h2 className="text-xs font-extrabold text-white">Your workspace</h2><p className="mt-3 text-xs leading-5 text-violet-200/75">Manage your services and bookings from your account workspace.</p></div>}
+          <div>
+            <h2 className="text-xs font-extrabold text-white">For professionals</h2>
+            <p className="mt-3 text-xs leading-5 text-violet-200/75">Grow your local service business with Urbanmate.</p>
+            {!user && <button type="button" onClick={() => openAuth('provider', 'register')} className="mt-3 text-xs font-bold text-white transition hover:text-fuchsia-200">Become a partner <ArrowUpRight size={13} className="ml-1 inline" /></button>}
+          </div>
+          <div>
+            <h2 className="text-xs font-extrabold text-white">Need help?</h2>
+            <p className="mt-3 text-xs leading-5 text-violet-200/75">For help with an upcoming visit, check your booking details or contact your service professional.</p>
+          </div>
+        </div>
+        <div className="mx-auto mt-8 flex max-w-[1360px] flex-col justify-between gap-2 border-t border-white/10 pt-4 text-[10px] text-violet-200/65 sm:flex-row">
           <span>© {new Date().getFullYear()} Urbanmate. Home, made easier.</span>
-          <span className="flex items-center gap-2"><Shield size={13} /> Your account and bookings stay protected.</span>
+          <span>Thoughtful local service, right at home.</span>
         </div>
       </footer>
       <Modal open={authOpen} onClose={() => setAuthOpen(false)} title="Your Urbanmate account">

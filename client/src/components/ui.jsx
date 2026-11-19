@@ -29,15 +29,15 @@ export function Button({
   );
 }
 
-export function Brand({ compact = false }) {
+export function Brand({ compact = false, dark = false }) {
   return (
     <div className="flex items-center gap-2.5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-sm">
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-700 text-white shadow-sm">
         <Sparkles size={18} strokeWidth={2.2} />
       </span>
       {!compact && (
-        <span className="text-[17px] font-extrabold tracking-tight text-slate-900">
-          urban<span className="text-emerald-700">mate</span>
+        <span className={`text-[17px] font-extrabold tracking-tight ${dark ? 'text-white' : 'text-slate-900'}`}>
+          urban<span className={dark ? 'text-fuchsia-300' : 'text-violet-700'}>mate</span>
         </span>
       )}
     </div>

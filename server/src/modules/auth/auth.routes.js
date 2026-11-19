@@ -6,6 +6,7 @@ const env = require('../../config/env');
 const validateRequest = require('../../middleware/validate-request');
 const { authenticate, requireExclusiveRole } = require('../../middleware/auth');
 const controller = require('./auth.controller');
+
 const {
   registerSchema,
   loginSchema,
@@ -17,7 +18,9 @@ const {
   userIdParamsSchema
 } = require('./auth.schemas');
 
+
 const router = express.Router();
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
@@ -25,6 +28,7 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
   handler: (req, res, next) => next(new AppError('Too many authentication attempts', 429, 'RATE_LIMITED'))
 });
+
 const registrationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 10,
@@ -32,6 +36,7 @@ const registrationLimiter = rateLimit({
   legacyHeaders: false,
   handler: (req, res, next) => next(new AppError('Too many registration attempts', 429, 'RATE_LIMITED'))
 });
+
 const recoveryLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 5,
@@ -39,6 +44,7 @@ const recoveryLimiter = rateLimit({
   legacyHeaders: false,
   handler: (req, res, next) => next(new AppError('Too many recovery attempts', 429, 'RATE_LIMITED'))
 });
+
 const otpLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 3,
@@ -46,6 +52,7 @@ const otpLimiter = rateLimit({
   legacyHeaders: false,
   handler: (req, res, next) => next(new AppError('Too many verification attempts', 429, 'RATE_LIMITED'))
 });
+
 const login = (role, message) => asyncHandler(controller.loginFor(role, message));
 
 function adminRegistrationAccess(req, res, next) {
@@ -67,6 +74,7 @@ function adminRegistrationAccess(req, res, next) {
 
 router.post('/register', registrationLimiter, validateRequest(registerSchema), asyncHandler(controller.registerCustomer));
 router.post('/provider/register', registrationLimiter, validateRequest(providerRegisterSchema), asyncHandler(controller.registerProvider));
+
 router.post(
   '/admin/register',
   registrationLimiter,
@@ -86,6 +94,7 @@ router.post('/password/reset', recoveryLimiter, validateRequest(resetPasswordSch
 router.get('/me', authenticate, asyncHandler(controller.currentUser));
 router.post('/otp/email/request', authenticate, otpLimiter, asyncHandler(controller.requestEmailOtp));
 router.post('/otp/email/verify', authenticate, otpLimiter, validateRequest(otpVerifySchema), asyncHandler(controller.verifyEmailOtp));
+
 router.patch(
   '/admin/users/:userId/status',
   authenticate,

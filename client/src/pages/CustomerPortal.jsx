@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   ArrowUpRight,
+  BadgeCheck,
   CalendarDays,
   Check,
   ChevronRight,
@@ -18,6 +19,8 @@ import {
 } from 'lucide-react';
 import AddressEditor from '../components/AddressEditor';
 import EmailVerification from '../components/EmailVerification';
+import { CartPage, ServiceDetails } from './MarketplacePages';
+import { demoCategories, demoServices, filterDemoServices } from '../lib/demoCatalog';
 import {
   Badge,
   Button,
@@ -45,10 +48,19 @@ const serviceIcon = (name = '') => {
 
 const categoryColors = [
   'from-emerald-100 to-lime-50 text-emerald-800',
-  'from-amber-100 to-orange-50 text-amber-800',
-  'from-sky-100 to-cyan-50 text-sky-800',
-  'from-violet-100 to-fuchsia-50 text-violet-800'
+  'from-violet-100 to-fuchsia-50 text-violet-800',
+  'from-fuchsia-100 to-pink-50 text-fuchsia-800',
+  'from-indigo-100 to-sky-50 text-indigo-800'
 ];
+
+function getDemoFilters(filters, categories) {
+  const selectedCategory = categories.find((category) => category.id === filters.categoryId);
+  const demoCategory = demoCategories.find((category) => category.name.toLowerCase() === selectedCategory?.name?.toLowerCase());
+  return {
+    ...filters,
+    categoryId: demoCategory?.id || filters.categoryId
+  };
+}
 
 function useCities() {
   const [cities, setCities] = useState([]);
@@ -58,31 +70,35 @@ function useCities() {
   return cities;
 }
 
-function ServiceCard({ service, index, onClick }) {
+function ServiceCard({ service, index, onClick, compact = false }) {
   const Icon = serviceIcon(service.name);
+  const image = service.images?.[0]?.imageUrl;
   return (
-    <button type="button" onClick={onClick} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl hover:shadow-slate-900/5">
-      <div className={`relative flex h-36 items-center justify-center bg-gradient-to-br ${categoryColors[index % categoryColors.length]}`}>
-        <div className="absolute right-4 top-4 rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold text-slate-600">LOCAL PROS</div>
-        <span className="grid h-[74px] w-[74px] place-items-center rounded-[26px] bg-white/80 shadow-sm transition group-hover:rotate-[-5deg] group-hover:scale-105">
-          <Icon size={34} strokeWidth={1.6} />
-        </span>
-        <div className="absolute -bottom-5 left-5 grid h-10 w-10 place-items-center rounded-xl border border-slate-100 bg-white text-amber-500 shadow-sm"><Star size={16} fill="currentColor" /></div>
+    <button type="button" onClick={onClick} className="group overflow-hidden rounded-2xl border border-violet-100 bg-white text-left shadow-[0_8px_24px_-20px_rgba(76,29,149,0.5)] transition hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-900/10">
+      <div className={`relative flex items-center justify-center overflow-hidden bg-gradient-to-br ${categoryColors[index % categoryColors.length]} ${compact ? 'h-28' : 'h-36'}`}>
+        {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : (
+          <span className="grid h-[66px] w-[66px] place-items-center rounded-[23px] bg-white/85 shadow-sm transition group-hover:rotate-[-5deg] group-hover:scale-105">
+            <Icon size={31} strokeWidth={1.6} />
+          </span>
+        )}
+        {image && <div className="absolute inset-0 bg-gradient-to-t from-slate-950/25 to-transparent" />}
+        <div className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wide text-violet-800">Local pros</div>
+        {!compact && <div className="absolute -bottom-5 left-5 grid h-10 w-10 place-items-center rounded-xl border border-slate-100 bg-white text-amber-500 shadow-sm"><Star size={16} fill="currentColor" /></div>}
       </div>
-      <div className="p-5 pt-7">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">{service.category?.name || 'HOME SERVICE'}</p>
-        <h3 className="mt-1.5 line-clamp-1 text-base font-extrabold text-slate-900">{service.name}</h3>
-        <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">{service.shortDescription || service.description || 'Carefully matched professionals, ready when you need them.'}</p>
-        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
-          <span className="text-sm font-extrabold text-slate-900">from {currency(service.effectivePrice ?? service.basePrice, service.currency)}</span>
-          <span className="flex items-center gap-1 text-xs font-bold text-emerald-700 group-hover:gap-2">View <ArrowRight size={14} /></span>
+      <div className={`p-4 ${compact ? '' : 'pt-7'}`}>
+        <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400">{service.category?.name || 'HOME SERVICE'}</p>
+        <h3 className="mt-1 line-clamp-1 text-sm font-extrabold text-slate-900">{service.name}</h3>
+        {!compact && <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">{service.shortDescription || service.description || 'Carefully matched professionals, ready when you need them.'}</p>}
+        <div className={`flex items-center justify-between gap-2 ${compact ? 'mt-2' : 'mt-4 border-t border-slate-100 pt-4'}`}>
+          <span className="text-xs font-extrabold text-slate-900">From {currency(service.effectivePrice ?? service.basePrice, service.currency)}</span>
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-violet-100 text-violet-700 transition group-hover:bg-violet-700 group-hover:text-white"><ArrowRight size={14} /></span>
         </div>
       </div>
     </button>
   );
 }
 
-function CustomerHome({ user, onSignIn, onOpenService, onTabChange }) {
+function CustomerHome({ user, onOpenService, onTabChange, onBecomePartner }) {
   const [categories, setCategories] = useState([]);
   const [services, setServices] = useState([]);
   const [query, setQuery] = useState('');
@@ -90,11 +106,15 @@ function CustomerHome({ user, onSignIn, onOpenService, onTabChange }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [bookingCount, setBookingCount] = useState(0);
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     api.get('/catalog/categories', { limit: '100' })
-      .then(setCategories)
-      .catch(() => setCategories([]));
+      .then((result) => setCategories(result.length ? result : demoCategories))
+      .catch((requestError) => {
+        setCategories(demoCategories);
+        console.warn('Using sample service categories because the catalog could not be loaded:', getErrorMessage(requestError));
+      });
   }, []);
 
   useEffect(() => {
@@ -107,9 +127,20 @@ function CustomerHome({ user, onSignIn, onOpenService, onTabChange }) {
         ...(query.trim() ? { q: query.trim() } : {}),
         ...(categoryId ? { categoryId } : {})
       }).then((items) => {
-        if (active) setServices(items);
+        if (!active) return;
+        if (items.length) {
+          setServices(items);
+          setDemoMode(false);
+        } else {
+          setServices(filterDemoServices(demoServices, getDemoFilters({ q: query, categoryId }, categories)));
+          setDemoMode(true);
+        }
       }).catch((requestError) => {
-        if (active) setError(getErrorMessage(requestError));
+        if (!active) return;
+        setServices(filterDemoServices(demoServices, getDemoFilters({ q: query, categoryId }, categories)));
+        setDemoMode(true);
+        setError('');
+        console.warn('Using sample services because the catalog could not be loaded:', getErrorMessage(requestError));
       }).finally(() => {
         if (active) setLoading(false);
       });
@@ -118,7 +149,7 @@ function CustomerHome({ user, onSignIn, onOpenService, onTabChange }) {
       active = false;
       clearTimeout(timer);
     };
-  }, [query, categoryId]);
+  }, [query, categoryId, categories]);
 
   useEffect(() => {
     if (!user) return;
@@ -127,117 +158,246 @@ function CustomerHome({ user, onSignIn, onOpenService, onTabChange }) {
       .catch(() => setBookingCount(0));
   }, [user]);
 
+  const trendTerms = ['AC service', 'Home cleaning', 'Salon at home', 'Plumbing'];
+  const heroImage = services.find((service) => service.images?.[0]?.imageUrl)?.images?.[0]?.imageUrl;
+
   return (
-    <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-[28px] bg-[#173f32] px-6 py-7 text-white sm:px-9 sm:py-9">
-        <div className="absolute -right-10 -top-32 h-80 w-80 rounded-full border border-white/10" />
-        <div className="absolute -right-2 -top-24 h-64 w-64 rounded-full border border-white/10" />
-        <div className="relative z-10 grid items-center gap-7 md:grid-cols-[1fr_auto]">
-          <div className="max-w-2xl">
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-emerald-200">{user ? `A little easier today, ${user.fullName?.split(' ')[0] || 'friend'}` : 'A good day to get things done'}</p>
-            <h1 className="mt-2 text-3xl font-black leading-tight tracking-tight sm:text-4xl">Home care, without<br className="hidden sm:block" /> the to-do list.</h1>
-            <p className="mt-3 max-w-lg text-sm leading-6 text-emerald-50/75">From quick fixes to a full reset, find the right local help for your home.</p>
-            <div className="mt-6 flex max-w-xl items-center gap-2 rounded-2xl bg-white p-2 shadow-lg shadow-black/10">
+    <div id="customer-home" className="space-y-9 pb-8">
+      <section className="relative isolate overflow-hidden rounded-[28px] bg-[#f2ebff] sm:rounded-[34px]">
+        <div className="absolute -right-20 -top-32 h-96 w-96 rounded-full bg-violet-200/50 blur-3xl" />
+        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-fuchsia-100/80 blur-3xl" />
+        <div className="relative grid min-h-[410px] items-center gap-8 px-5 py-8 sm:px-9 sm:py-10 lg:grid-cols-[1fr_0.95fr] lg:px-12 lg:py-12">
+          <div className="relative z-10 max-w-2xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white/80 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.13em] text-violet-800"><Sparkles size={13} /> Home services, on demand</span>
+            <h1 className="mt-5 max-w-xl text-4xl font-black leading-[1.04] tracking-[-0.045em] text-slate-950 sm:text-5xl xl:text-[58px]">
+              Book trusted pros for <span className="text-violet-700">all your home needs.</span>
+            </h1>
+            <p className="mt-4 max-w-lg text-sm leading-6 text-slate-600 sm:text-base">Cleaning, repairs, maintenance and more — thoughtful local help, right at your doorstep.</p>
+            <div className="mt-6 flex max-w-2xl items-center gap-2 rounded-2xl border border-violet-100 bg-white p-2 shadow-[0_14px_40px_-24px_rgba(76,29,149,0.45)]">
               <Search size={19} className="ml-2 shrink-0 text-slate-400" />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="What can we help with today?" className="min-w-0 flex-1 border-0 bg-transparent px-1 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400" />
-              <Button size="sm" onClick={() => document.getElementById('customer-services')?.scrollIntoView({ behavior: 'smooth' })}>Find a pro</Button>
+              <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && document.getElementById('customer-services')?.scrollIntoView({ behavior: 'smooth' })} placeholder="Search AC repair, home cleaning…" className="min-w-0 flex-1 border-0 bg-transparent px-1 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400" aria-label="Search services" />
+              <Button size="sm" className="bg-violet-700 hover:bg-violet-800" onClick={() => document.getElementById('customer-services')?.scrollIntoView({ behavior: 'smooth' })}>Search</Button>
             </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="font-bold text-slate-500">Trending:</span>
+              {trendTerms.map((term) => <button key={term} type="button" onClick={() => { setQuery(term); document.getElementById('customer-services')?.scrollIntoView({ behavior: 'smooth' }); }} className="rounded-full border border-violet-100 bg-white/80 px-3 py-1.5 font-semibold text-slate-600 transition hover:border-violet-300 hover:text-violet-800">{term}</button>)}
+            </div>
+            {user && (
+              <button type="button" onClick={() => onTabChange('bookings')} className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-violet-800 hover:text-violet-950">
+                <CalendarDays size={15} /> You have {bookingCount} {bookingCount === 1 ? 'booking' : 'bookings'} <ArrowRight size={14} />
+              </button>
+            )}
           </div>
-          <div className="hidden min-w-[210px] rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur md:block">
-            <div className="flex items-center justify-between text-emerald-100"><span className="text-xs font-bold uppercase tracking-wider">Your home dashboard</span><House size={16} /></div>
-            <div className="mt-5 flex items-end justify-between">
-              <div><p className="text-4xl font-black">{bookingCount}</p><p className="mt-1 text-xs text-emerald-100/70">bookings on your account</p></div>
-              <button type="button" onClick={() => onTabChange('bookings')} className="grid h-10 w-10 place-items-center rounded-xl bg-white text-emerald-800 transition hover:scale-105"><ArrowUpRight size={18} /></button>
+
+          <div className="relative mx-auto flex min-h-[260px] w-full max-w-[500px] items-center justify-center sm:min-h-[310px]">
+            {heroImage ? (
+              <img src={heroImage} alt="Home service from Urbanmate" className="absolute inset-0 h-full w-full rounded-[30px] object-cover shadow-xl" />
+            ) : (
+              <>
+                <div className="absolute inset-5 rounded-[38%] bg-gradient-to-br from-violet-300 via-fuchsia-200 to-indigo-200 shadow-[0_35px_80px_-40px_rgba(91,33,182,0.5)]" />
+                <div className="relative grid h-52 w-52 place-items-center rounded-[36%] border border-white/80 bg-white/70 shadow-xl backdrop-blur sm:h-60 sm:w-60">
+                  <div className="flex h-36 w-36 flex-col items-center justify-center rounded-[30%] bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white shadow-lg shadow-violet-900/20 sm:h-40 sm:w-40">
+                    <House size={68} strokeWidth={1.35} />
+                    <span className="mt-2 rounded-full bg-white px-3 py-1 text-[9px] font-extrabold text-violet-800 shadow">HOME, MADE EASIER</span>
+                  </div>
+                </div>
+              </>
+            )}
+            <div className="absolute left-0 top-5 flex items-center gap-2 rounded-2xl border border-violet-100 bg-white/95 p-3 shadow-lg sm:left-1">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-violet-100 text-violet-700"><ShieldCheck size={19} /></span>
+              <span><strong className="block text-[11px] text-slate-900">Verified experts</strong><small className="text-[10px] text-slate-500">Thoughtful, trusted care</small></span>
+            </div>
+            <div className="absolute bottom-4 right-0 flex items-center gap-2 rounded-2xl border border-violet-100 bg-white/95 p-3 shadow-lg sm:right-1">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-fuchsia-100 text-fuchsia-700"><CalendarDays size={19} /></span>
+              <span><strong className="block text-[11px] text-slate-900">Flexible scheduling</strong><small className="text-[10px] text-slate-500">Choose a time that works</small></span>
             </div>
           </div>
         </div>
       </section>
 
       <section>
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div><p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-emerald-700">Browse by need</p><h2 className="mt-1 text-xl font-extrabold tracking-tight text-slate-900">What needs a hand?</h2></div>
-          {categories.length > 4 && <button type="button" onClick={() => onTabChange('services')} className="text-sm font-bold text-emerald-700 hover:text-emerald-900">All categories <ChevronRight size={15} className="inline" /></button>}
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div><p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-violet-700">Find your fix</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-950 sm:text-2xl">Browse by category</h2></div>
+          <button type="button" onClick={() => onTabChange('services')} className="inline-flex items-center gap-1 text-xs font-bold text-violet-700 hover:text-violet-900">All services <ChevronRight size={15} /></button>
         </div>
-        {categories.length ? (
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            <button type="button" onClick={() => setCategoryId('')} className={`shrink-0 rounded-full px-4 py-2.5 text-xs font-bold transition ${!categoryId ? 'bg-emerald-800 text-white' : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-300'}`}>Everything</button>
-            {categories.slice(0, 7).map((category, index) => (
-              <button key={category.id} type="button" onClick={() => setCategoryId(category.id)} className={`shrink-0 rounded-full border px-4 py-2.5 text-xs font-bold transition ${categoryId === category.id ? 'border-emerald-800 bg-emerald-800 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'}`}>
-                <span className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${['bg-emerald-500', 'bg-amber-500', 'bg-sky-500', 'bg-violet-500'][index % 4]}`} />{category.name}
+        <div className="flex gap-3 overflow-x-auto pb-3">
+          {(categories.length ? categories.slice(0, 8) : ['Cleaning', 'Plumbing', 'Electrical', 'Appliance care'].map((name) => ({ id: name, name }))).map((category, index) => {
+            const Icon = serviceIcon(category.name);
+            return (
+              <button key={category.id} type="button" onClick={() => { setCategoryId(category.id.length > 30 ? category.id : ''); if (category.id.length <= 30) setQuery(category.name); document.getElementById('customer-services')?.scrollIntoView({ behavior: 'smooth' }); }} className="group min-w-[118px] overflow-hidden rounded-2xl border border-violet-100 bg-white text-left shadow-[0_8px_25px_-22px_rgba(76,29,149,0.7)] transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md sm:min-w-[136px]">
+                <span className={`flex h-[74px] items-center justify-center bg-gradient-to-br ${categoryColors[index % categoryColors.length]}`}><Icon size={29} strokeWidth={1.7} /></span>
+                <span className="block px-3 py-2.5 text-center text-[11px] font-extrabold leading-tight text-slate-800">{category.name}</span>
               </button>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {['Cleaning', 'Plumbing', 'Electrical', 'Appliance care'].map((name, index) => (
-              <button key={name} onClick={() => setQuery(name)} className="rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-emerald-200 hover:shadow-sm">
-                <span className={`mb-3 block h-8 w-8 rounded-xl bg-gradient-to-br ${categoryColors[index]}`} />
-                <span className="text-sm font-bold text-slate-700">{name}</span>
-              </button>
-            ))}
-          </div>
-        )}
+            );
+          })}
+          <button type="button" onClick={() => onTabChange('services')} className="grid min-w-[92px] place-items-center rounded-2xl border border-violet-100 bg-violet-50 px-3 text-center text-xs font-extrabold text-violet-800 transition hover:bg-violet-100"><span className="text-2xl">»</span><span>More<br />services</span></button>
+        </div>
       </section>
 
-      <section id="customer-services">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-          <div><p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-emerald-700">Handpicked for your home</p><h2 className="mt-1 text-xl font-extrabold tracking-tight text-slate-900">{query ? `Results for “${query}”` : 'Popular services'}</h2></div>
-          {services.length > 0 && <span className="text-xs font-semibold text-slate-400">{services.length} options</span>}
+      <section id="customer-services" className="scroll-mt-24">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div><p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-violet-700">Handpicked for your home</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-950 sm:text-2xl">{query ? `Services for “${query}”` : 'Popular services'}</h2></div>
+          <button type="button" onClick={() => onTabChange('services')} className="inline-flex items-center gap-1 text-xs font-bold text-violet-700 hover:text-violet-900">View all services <ArrowRight size={14} /></button>
         </div>
+        {demoMode && <p role="status" className="mb-3 rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-[11px] leading-5 text-violet-800">Sample services are shown while the live catalog is unavailable. These listings are for preview only.</p>}
         {loading ? <PageLoader label="Finding the right local services…" /> : error ? <ErrorState message={error} onRetry={() => setQuery((value) => `${value} `)} /> : services.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {services.map((service, index) => <ServiceCard key={service.id} service={service} index={index} onClick={() => user ? onOpenService(service.id) : onSignIn()} />)}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {services.slice(0, 5).map((service, index) => <ServiceCard key={service.id} service={service} index={index} compact onClick={() => onOpenService(service.id)} />)}
           </div>
         ) : <EmptyState icon={CircleHelp} title="No services found" description="Try a different search or check back as more local services are added." />}
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-3 rounded-[26px] bg-gradient-to-r from-[#f6f0ff] via-[#f2ebff] to-[#f8f2ff] p-5 sm:grid-cols-[1.1fr_repeat(4,1fr)] sm:items-center sm:p-6">
+        <div className="mb-1 sm:mb-0"><h2 className="text-lg font-black tracking-tight text-violet-900">How Urbanmate works</h2><p className="mt-1 text-xs leading-5 text-slate-600">Home help, in a few simple steps.</p></div>
         {[
-          { icon: ShieldCheck, title: 'Good people, thoughtfully matched', text: 'Providers are reviewed and verified before they join the network.' },
-          { icon: Clock3, title: 'Your time matters', text: 'Choose a time that works for your day and see who is available.' },
-          { icon: Star, title: 'Care in the details', text: 'Real customer reviews help every great local expert stand out.' }
-        ].map(({ icon: Icon, title, text }) => (
-          <Card key={title} className="flex gap-4 p-5">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Icon size={19} /></span>
-            <div><h3 className="text-sm font-bold text-slate-800">{title}</h3><p className="mt-1 text-xs leading-5 text-slate-500">{text}</p></div>
-          </Card>
+          { icon: Search, title: 'Choose a service', text: 'Browse trusted home services.' },
+          { icon: CalendarDays, title: 'Pick a time', text: 'Choose a convenient slot.' },
+          { icon: BadgeCheck, title: 'Meet your pro', text: 'A local expert confirms.' },
+          { icon: Star, title: 'Enjoy the result', text: 'Share your experience.' }
+        ].map(({ icon: Icon, title, text }, index) => (
+          <div key={title} className="flex items-center gap-3 border-t border-violet-200/70 pt-3 sm:block sm:border-0 sm:border-l sm:pl-4 sm:pt-0">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-violet-700 shadow-sm"><Icon size={18} /></span>
+            <div className="sm:mt-2"><h3 className="text-xs font-extrabold text-slate-900">{index + 1}. {title}</h3><p className="mt-0.5 text-[10px] leading-4 text-slate-500">{text}</p></div>
+          </div>
         ))}
+      </section>
+
+      <section>
+        <div className="mb-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-violet-700">The Urbanmate difference</p><h2 className="mt-1 text-xl font-black tracking-tight text-slate-950 sm:text-2xl">Good help. Thoughtfully delivered.</h2></div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: ShieldCheck, title: 'Verified professionals', text: 'Providers are reviewed before joining our network.' },
+            { icon: Clock3, title: 'Flexible scheduling', text: 'Pick a service time that works for your day.' },
+            { icon: ArrowUpRight, title: 'Clear pricing', text: 'See service prices before confirming a booking.' },
+            { icon: Sparkles, title: 'Care in the details', text: 'A smoother way to take care of your home.' }
+          ].map(({ icon: Icon, title, text }) => (
+            <Card key={title} className="flex gap-3 border-violet-100 p-4">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-700"><Icon size={19} /></span>
+              <div><h3 className="text-xs font-extrabold text-slate-900">{title}</h3><p className="mt-1 text-[11px] leading-5 text-slate-500">{text}</p></div>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden rounded-[26px] bg-gradient-to-r from-violet-800 via-violet-700 to-fuchsia-700 px-6 py-7 text-white sm:px-9 sm:py-8">
+        <div className="absolute -right-10 -top-20 h-60 w-60 rounded-full border border-white/15" />
+        <div className="relative flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+          <div><p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-violet-200">For skilled professionals</p><h2 className="mt-2 text-xl font-black sm:text-2xl">Build your business with Urbanmate.</h2><p className="mt-2 max-w-xl text-xs leading-5 text-violet-100">Connect with customers, manage your schedule, and grow your local service business.</p></div>
+          <Button className="shrink-0 bg-white text-violet-800 hover:bg-violet-50" onClick={onBecomePartner}>Become a partner <ArrowRight size={15} /></Button>
+        </div>
       </section>
     </div>
   );
 }
 
-function ServiceExplorer({ user, onSignIn, onOpenService }) {
+function ServiceExplorer({ onOpenService }) {
   const [query, setQuery] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [categoryId, setCategoryId] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [minDuration, setMinDuration] = useState('');
+  const [sortBy, setSortBy] = useState('name');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [demoMode, setDemoMode] = useState(false);
 
-  async function load() {
-    setLoading(true);
-    setError('');
-    try {
-      const result = await api.get('/catalog/services', { limit: '100', ...(query ? { q: query } : {}) });
-      setItems(result);
-    } catch (requestError) {
-      setError(getErrorMessage(requestError));
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    api.get('/catalog/categories', { limit: '100' })
+      .then((result) => setCategories(result.length ? result : demoCategories))
+      .catch((requestError) => {
+        setCategories(demoCategories);
+        console.warn('Using sample service categories because the catalog could not be loaded:', getErrorMessage(requestError));
+      });
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(() => {
+      setLoading(true);
+      setError('');
+      const filters = {
+        limit: '100',
+        ...(query.trim() ? { q: query.trim() } : {}),
+        ...(categoryId ? { categoryId } : {}),
+        ...(minPrice ? { minPrice } : {}),
+        ...(maxPrice ? { maxPrice } : {}),
+        ...(minDuration ? { minDuration } : {}),
+        sortBy,
+        order: 'asc'
+      };
+      api.get('/catalog/services', filters).then((result) => {
+        if (!active) return;
+        if (result.length) {
+          setItems(result);
+          setDemoMode(false);
+        } else {
+          setItems(filterDemoServices(demoServices, getDemoFilters(filters, categories)));
+          setDemoMode(true);
+        }
+      }).catch((requestError) => {
+        if (!active) return;
+        if (requestError.status === 400) {
+          setError(getErrorMessage(requestError));
+          setDemoMode(false);
+          return;
+        }
+        setItems(filterDemoServices(demoServices, getDemoFilters(filters, categories)));
+        setDemoMode(true);
+        console.warn('Using sample services because the catalog could not be loaded:', getErrorMessage(requestError));
+      }).finally(() => {
+        if (active) setLoading(false);
+      });
+    }, 180);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [query, categoryId, minPrice, maxPrice, minDuration, sortBy, reloadKey, categories]);
+
+  function load() {
+    setReloadKey((value) => value + 1);
   }
-  useEffect(() => { load(); }, []);
 
   return (
-    <div>
+    <div id="customer-services">
       <SectionHeading eyebrow="Discover" title="Explore home services" description="Find the right help for your space and schedule." />
-      <div className="mb-6 flex gap-2 rounded-2xl border border-slate-200 bg-white p-2">
-        <Search className="ml-2 mt-2.5 shrink-0 text-slate-400" size={18} />
-        <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && load()} className="min-w-0 flex-1 bg-transparent px-1 text-sm outline-none" placeholder="Search cleaning, plumbing, appliance repair…" />
-        <Button size="sm" onClick={load}>Search</Button>
+      {demoMode && <p role="status" className="mb-4 rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-[11px] leading-5 text-violet-800">Sample services are shown while the live catalog is unavailable. These listings are for preview only.</p>}
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+        <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-3 focus-within:border-emerald-600 focus-within:ring-4 focus-within:ring-emerald-600/10">
+          <Search className="shrink-0 text-slate-400" size={18} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="Search cleaning, plumbing, appliance repair…" aria-label="Search services" />
+        </label>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <label className="text-xs font-bold text-slate-500">Category
+            <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-emerald-600">
+              <option value="">All categories</option>
+              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-bold text-slate-500">Minimum price
+            <input type="number" min="0" value={minPrice} onChange={(event) => setMinPrice(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-emerald-600" placeholder="₹0" />
+          </label>
+          <label className="text-xs font-bold text-slate-500">Maximum price
+            <input type="number" min="0" value={maxPrice} onChange={(event) => setMaxPrice(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-emerald-600" placeholder="Any price" />
+          </label>
+          <label className="text-xs font-bold text-slate-500">Minimum duration
+            <select value={minDuration} onChange={(event) => setMinDuration(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-emerald-600">
+              <option value="">Any duration</option><option value="30">30+ minutes</option><option value="60">1+ hour</option><option value="120">2+ hours</option>
+            </select>
+          </label>
+          <label className="text-xs font-bold text-slate-500">Sort by
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 outline-none focus:border-emerald-600">
+              <option value="name">Name</option><option value="price">Price</option><option value="duration">Duration</option>
+            </select>
+          </label>
+        </div>
       </div>
       {loading ? <PageLoader /> : error ? <ErrorState message={error} onRetry={load} /> : items.length ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {items.map((service, index) => <ServiceCard key={service.id} service={service} index={index} onClick={() => user ? onOpenService(service.id) : onSignIn()} />)}
+          {items.map((service, index) => <ServiceCard key={service.id} service={service} index={index} onClick={() => onOpenService(service.id)} />)}
         </div>
       ) : <EmptyState icon={Search} title="No services match that search" description="Try a broader keyword or clear your search." />}
     </div>
@@ -370,7 +530,7 @@ function CustomerProfile({ user, onUserUpdate }) {
   );
 }
 
-function BookingFlow({ serviceId, onClose, onNeedLogin }) {
+function BookingFlow({ serviceId, initialItem, onClose, onNeedLogin, onBookingCreated }) {
   const cities = useCities();
   const [service, setService] = useState(null);
   const [addresses, setAddresses] = useState([]);
@@ -388,6 +548,10 @@ function BookingFlow({ serviceId, onClose, onNeedLogin }) {
   const [addAddress, setAddAddress] = useState(false);
 
   async function load() {
+    if (initialItem?.isDemo) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -397,7 +561,9 @@ function BookingFlow({ serviceId, onClose, onNeedLogin }) {
       ]);
       setService(serviceData);
       setAddresses(addressData);
-      setPackageId(serviceData.packages?.[0]?.id || '');
+      const savedPackage = serviceData.packages?.find((item) => item.id === initialItem?.packageId);
+      setPackageId(savedPackage?.id || serviceData.packages?.[0]?.id || '');
+      setAddonIds((initialItem?.addonIds || []).filter((id) => serviceData.addons?.some((addon) => addon.id === id)));
       setAddressId(addressData[0]?.id || '');
     } catch (requestError) {
       setError(getErrorMessage(requestError));
@@ -405,7 +571,7 @@ function BookingFlow({ serviceId, onClose, onNeedLogin }) {
       setLoading(false);
     }
   }
-  useEffect(() => { load(); }, [serviceId]);
+  useEffect(() => { load(); }, [serviceId, initialItem]);
 
   const selectedPackage = service?.packages?.find((item) => item.id === packageId);
   const selectedAddons = service?.addons?.filter((item) => addonIds.includes(item.id)) || [];
@@ -453,6 +619,7 @@ function BookingFlow({ serviceId, onClose, onNeedLogin }) {
         addonIds
       });
       setCreatedBooking(booking);
+      onBookingCreated(booking);
     } catch (requestError) {
       setError(getErrorMessage(requestError));
       if (requestError.status === 401) onNeedLogin();
@@ -462,6 +629,16 @@ function BookingFlow({ serviceId, onClose, onNeedLogin }) {
   }
 
   if (loading) return <PageLoader label="Loading service details…" />;
+  if (initialItem?.isDemo && !service) {
+    return (
+      <div className="space-y-4 rounded-2xl bg-violet-50 p-5">
+        <Badge tone="blue">Sample listing</Badge>
+        <h3 className="text-lg font-extrabold text-slate-900">Preview only</h3>
+        <p className="text-sm leading-6 text-slate-600">This sample service can be explored and added to your cart, but booking needs the live catalog and availability API.</p>
+        <Button variant="secondary" className="w-full" onClick={onClose}>Back to cart</Button>
+      </div>
+    );
+  }
   if (error && !service) return <ErrorState message={error} onRetry={load} />;
   if (createdBooking) {
     return (
@@ -476,7 +653,7 @@ function BookingFlow({ serviceId, onClose, onNeedLogin }) {
           <div className="mt-2 flex justify-between gap-3 text-xs text-slate-500"><span>{new Date(createdBooking.scheduledStart).toLocaleString()}</span><Badge tone="amber">Provider confirmation pending</Badge></div>
         </Card>
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-          Checkout has been prepared. Payment options will appear here when the payment API is enabled for this environment.
+          Your booking request has been submitted. Online payment is not available here yet; your booking is awaiting provider confirmation.
         </div>
         <Button className="w-full" onClick={onClose}>Done</Button>
       </div>
@@ -563,30 +740,72 @@ function BookingFlow({ serviceId, onClose, onNeedLogin }) {
   );
 }
 
-export default function CustomerPortal({ user, active, onTabChange, onSignIn, onUserUpdate }) {
+export default function CustomerPortal({
+  user,
+  active,
+  onTabChange,
+  onSignIn,
+  onUserUpdate,
+  cartItems,
+  onAddToCart,
+  onRemoveFromCart,
+  onBecomePartner
+}) {
   const [serviceId, setServiceId] = useState('');
+  const [selectedCartItem, setSelectedCartItem] = useState(null);
+  const [detailServiceId, setDetailServiceId] = useState('');
   const [loginPrompt, setLoginPrompt] = useState(false);
 
   function openService(id) {
-    if (!user) {
-      setLoginPrompt(true);
-      return;
+    setDetailServiceId(id);
+  }
+
+  function changeTab(next) {
+    onTabChange(next);
+    if (!user && next === 'services') {
+      window.setTimeout(() => document.getElementById('customer-services')?.scrollIntoView({ behavior: 'smooth' }), 0);
     }
-    setServiceId(id);
   }
 
   let content;
-  if (active === 'bookings') content = <BookingHistory onSignIn={() => onTabChange('services')} />;
+  if (detailServiceId) {
+    content = <ServiceDetails
+      serviceId={detailServiceId}
+      cartItem={cartItems.find((item) => item.serviceId === detailServiceId)}
+      onBack={() => setDetailServiceId('')}
+      onAddToCart={(item) => { onAddToCart(item); onTabChange('cart'); setDetailServiceId(''); }}
+    />;
+  } else if (active === 'cart') {
+    content = <CartPage
+      items={cartItems}
+      onRemove={onRemoveFromCart}
+      onContinue={() => changeTab('services')}
+      onCheckout={(item) => {
+        if (!user) {
+          setLoginPrompt(true);
+          return;
+        }
+        setSelectedCartItem(item);
+        setServiceId(item.serviceId);
+      }}
+    />;
+  } else if (active === 'bookings') content = <BookingHistory onSignIn={() => changeTab('services')} />;
   else if (active === 'addresses') content = <AddressBook />;
   else if (active === 'profile' && user) content = <CustomerProfile user={user} onUserUpdate={onUserUpdate} />;
-  else if (active === 'services') content = <ServiceExplorer user={user} onSignIn={() => setLoginPrompt(true)} onOpenService={openService} />;
-  else content = <CustomerHome user={user} onSignIn={() => setLoginPrompt(true)} onOpenService={openService} onTabChange={onTabChange} />;
+  else if (active === 'services') content = <ServiceExplorer onOpenService={openService} />;
+  else content = <CustomerHome user={user} onOpenService={openService} onTabChange={changeTab} onBecomePartner={onBecomePartner} />;
 
   return (
     <>
       {content}
-      <Modal open={Boolean(serviceId)} onClose={() => setServiceId('')} title="Build your booking" wide>
-        {serviceId && <BookingFlow serviceId={serviceId} onClose={() => { setServiceId(''); onTabChange('bookings'); }} onNeedLogin={() => { setServiceId(''); setLoginPrompt(true); }} />}
+      <Modal open={Boolean(serviceId)} onClose={() => { setServiceId(''); setSelectedCartItem(null); }} title="Schedule your service" wide>
+        {serviceId && <BookingFlow
+          serviceId={serviceId}
+          initialItem={selectedCartItem}
+          onClose={() => { setServiceId(''); setSelectedCartItem(null); onTabChange('bookings'); }}
+          onNeedLogin={() => { setServiceId(''); setSelectedCartItem(null); setLoginPrompt(true); }}
+          onBookingCreated={() => onRemoveFromCart(serviceId)}
+        />}
       </Modal>
       <Modal open={loginPrompt} onClose={() => setLoginPrompt(false)} title="Sign in to book">
         <div className="space-y-4">
