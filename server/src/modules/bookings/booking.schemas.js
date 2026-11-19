@@ -27,6 +27,7 @@ const addonIdsQuery = z.preprocess(
 );
 const availableProvidersSchema = z.object({
   serviceId: z.string().uuid(),
+  providerId: z.string().uuid().optional(),
   addressId: z.string().uuid(),
   packageId: z.string().uuid().optional(),
   addonIds: addonIdsQuery,

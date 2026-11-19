@@ -10,4 +10,14 @@ async function create(req, res) {
   return success(res, address, { statusCode: 201, message: 'Address created' });
 }
 
-module.exports = { list, create };
+async function remove(req, res) {
+  await addressService.deleteAddress(req.user.id, req.params.addressId);
+  return success(res, { deleted: true }, { message: 'Address deleted successfully' });
+}
+
+async function update(req, res) {
+  const address = await addressService.updateAddress(req.user.id, req.params.addressId, req.body);
+  return success(res, address, { message: 'Address updated successfully' });
+}
+
+module.exports = { list, create, remove, update };

@@ -1,20 +1,119 @@
-const categoryNames = [
-  'AC Service & Repair',
-  'Home Cleaning',
-  'Plumbing',
-  'Electrical',
-  'Salon at Home',
-  'Appliance Repair',
-  'Pest Control',
-  'Painting'
+const categoryList = [
+  {
+    name: 'Full Home/ By Room Cleaning',
+    imageUrl: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  },
+  {
+    name: 'Statement design wall',
+    imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  },
+  {
+    name: 'Living & Bedroom Cleaning',
+    imageUrl: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  },
+  {
+    name: 'Native Water Purifier',
+    imageUrl: 'https://images.unsplash.com/photo-1585338107529-13afc5f02586?auto=format&fit=crop&w=600&q=80',
+    isNew: true
+  },
+  {
+    name: 'Native Smart Locks',
+    imageUrl: 'https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  },
+  {
+    name: 'Cleaning',
+    imageUrl: 'https://images.unsplash.com/photo-1628177142898-93e36e4e3a50?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  },
+  {
+    name: 'Plumbing',
+    imageUrl: 'https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  },
+  {
+    name: 'Electrical',
+    imageUrl: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  },
+  {
+    name: 'Salon at Home',
+    imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  },
+  {
+    name: 'Appliance Repair',
+    imageUrl: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  },
+  {
+    name: 'Pest Control',
+    imageUrl: 'https://images.unsplash.com/photo-1563207153-f403bf289096?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  },
+  {
+    name: 'Painting',
+    imageUrl: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?auto=format&fit=crop&w=600&q=80',
+    isNew: false
+  }
 ];
 
-export const demoCategories = categoryNames.map((name, index) => ({
+export const demoCategories = categoryList.map((item, index) => ({
   id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
-  name
+  name: item.name,
+  imageUrl: item.imageUrl,
+  isNew: item.isNew
 }));
 
 const serviceInfo = [
+  {
+    name: 'Threading',
+    description: 'Precise and gentle eyebrow and facial hair removal using organic cotton thread.',
+    price: 49,
+    duration: 10,
+    image: 'photo-1560066984-138dadb4c035',
+    packageNames: ['Eyebrows', 'Upper lip', 'Chin', 'Forehead', 'Full face', 'Sideburns', 'Jawline', 'Eyebrows + Upper lip'],
+    addonNames: ['Soothing aloe gel massage']
+  },
+  {
+    name: 'Intense cleaning (2 bathroom)',
+    description: 'Machine scrubbing for tiles, hard water stain removal, disinfection of toilet and fittings.',
+    price: 918,
+    duration: 60,
+    image: 'photo-1584622650111-993a426fbf0a',
+    packageNames: ['2 Bathrooms deep scrub'],
+    addonNames: ['Exhaust fan degreasing']
+  },
+  {
+    name: 'Foam-jet AC service',
+    description: 'High-pressure 2X deeper foam jet cleaning of indoor cooling coils and outdoor unit.',
+    price: 599,
+    duration: 60,
+    image: 'photo-1621905252507-b35492cc74b4',
+    packageNames: ['1 Split AC', '2 Split AC', '3 Split AC', 'Window AC', 'Anti-rust spray', 'Gas top-up', 'Drain pipe repair', 'PCB overhaul', 'Full diagnostic'],
+    addonNames: ['Outdoor unit foam jet wash']
+  },
+  {
+    name: 'Fabric sofa cleaning',
+    description: 'Deep vacuuming, industrial foam shampooing, and wet extraction for fabric sofas.',
+    price: 399,
+    duration: 45,
+    image: 'photo-1555041469-a586c61ea9bc',
+    packageNames: ['3-seater sofa', '4-seater sofa', '5-seater L-shape', 'Cushion deep clean'],
+    addonNames: ['Fabric stain protectant spray']
+  },
+  {
+    name: 'Furnished apartment - Home deep cleaning',
+    description: 'Full house top-to-bottom mechanized cleaning with floor scrubbing and kitchen degreasing.',
+    price: 3499,
+    duration: 225,
+    image: 'photo-1581578731548-c64695cc6952',
+    packageNames: ['1 BHK', '2 BHK', '3 BHK', '4 BHK', 'Villa', 'Balcony wash'],
+    addonNames: ['Inside oven & chimney degrease']
+  },
   {
     name: 'AC Service & Repair',
     description: 'Get your air conditioner cleaned, checked, and ready to keep your home comfortable.',

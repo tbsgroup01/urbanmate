@@ -11,6 +11,7 @@ const profileSchema = z.object({
   fullName: z.string().trim().min(2).max(120).optional(),
   phone: z.string().trim().min(7).max(30).nullable().optional(),
   displayName: z.string().trim().min(2).max(120).optional(),
+  avatarUrl: z.string().url().max(2048).nullable().optional(),
   businessName: optionalText(160),
   bio: optionalText(5000),
   legalName: z.string().trim().min(2).max(160).optional(),
@@ -56,6 +57,7 @@ const providerListSchema = z.object({
 const publicProviderListSchema = z.object({
   ...pagination,
   serviceId: uuid.optional(),
+  categoryId: uuid.optional(),
   cityId: uuid.optional(),
   areaId: uuid.optional(),
   sortBy: z.enum(['rating', 'reviews', 'experience']).default('rating'),

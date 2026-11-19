@@ -10,6 +10,7 @@ const User = sequelize.define('User', {
   fullName: { type: DataTypes.STRING(120), allowNull: false },
   email: { type: DataTypes.STRING(254), allowNull: false, unique: true, validate: { isEmail: true } },
   phone: { type: DataTypes.STRING(30), unique: true },
+  avatarUrl: { type: DataTypes.STRING(2048), allowNull: true },
   passwordHash: { type: DataTypes.STRING(255), allowNull: false },
   status: statusEnum(['active', 'pending', 'suspended', 'deleted']),
   emailVerifiedAt: DataTypes.DATE,
@@ -51,6 +52,7 @@ const ServiceCategory = sequelize.define('ServiceCategory', {
   name: { type: DataTypes.STRING(100), allowNull: false },
   slug: { type: DataTypes.STRING(120), allowNull: false, unique: true },
   description: DataTypes.TEXT,
+  imageUrl: DataTypes.STRING(2048),
   isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   sortOrder: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
 }, {
@@ -179,6 +181,7 @@ const Provider = sequelize.define('Provider', {
   id: uuid,
   userId: { type: DataTypes.UUID, allowNull: false, unique: true },
   displayName: { type: DataTypes.STRING(120), allowNull: false },
+  avatarUrl: DataTypes.STRING(2048),
   businessName: DataTypes.STRING(160),
   bio: DataTypes.TEXT,
   legalName: DataTypes.STRING(160),
@@ -475,6 +478,26 @@ PasswordResetToken.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 User.hasMany(OtpVerification, { as: 'otpVerifications', foreignKey: 'userId' });
 OtpVerification.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 
+const SystemSetting = sequelize.define('SystemSetting', {
+  id: {
+    type: DataTypes.CHAR(36),
+    primaryKey: true,
+    defaultValue: DataTypes.UUIDV4
+  },
+  key: {
+    type: DataTypes.STRING(64),
+    unique: true,
+    allowNull: false
+  },
+  value: {
+    type: DataTypes.JSON,
+    allowNull: false
+  }
+}, {
+  tableName: 'system_settings',
+  underscored: true
+});
+
 module.exports = {
   sequelize,
   User,
@@ -504,5 +527,6 @@ module.exports = {
   Review,
   RefreshToken,
   PasswordResetToken,
-  OtpVerification
+  OtpVerification,
+  SystemSetting
 };

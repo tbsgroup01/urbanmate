@@ -78,6 +78,11 @@ async function markNotificationRead(req, res) {
   });
 }
 
+async function adminFinance(req, res) {
+  const result = await bookingService.getAdminFinanceStats();
+  return success(res, result);
+}
+
 module.exports = {
   create,
   list,
@@ -92,5 +97,6 @@ module.exports = {
   reschedule,
   assign,
   notifications,
-  markNotificationRead
+  markNotificationRead,
+  adminFinance
 };

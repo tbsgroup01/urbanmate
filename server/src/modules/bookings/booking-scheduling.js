@@ -119,8 +119,10 @@ async function assertProviderAvailable(providerId, serviceId, address, start, en
     where: { providerId: provider.id, isAvailable: true },
     transaction
   });
-  if (!availability.some((window) => isWithinAvailability(window, start, end))) {
-    throw new AppError('Provider is not available at the selected time', 409, 'PROVIDER_UNAVAILABLE');
+  if (availability.length > 0) {
+    if (!availability.some((window) => isWithinAvailability(window, start, end))) {
+      throw new AppError('Provider is not available at the selected time', 409, 'PROVIDER_UNAVAILABLE');
+    }
   }
 
   const conflictingBooking = await Booking.findOne({

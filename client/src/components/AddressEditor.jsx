@@ -2,19 +2,19 @@ import { useMemo, useState } from 'react';
 import { api, getErrorMessage } from '../lib/api';
 import { Button, Field, Input, Select } from './ui';
 
-export default function AddressEditor({ cities, onSaved, onCancel }) {
-  const [values, setValues] = useState({
-    label: 'Home',
-    line1: '',
-    line2: '',
-    cityId: '',
-    areaId: '',
-    city: '',
-    region: '',
-    postalCode: '',
-    countryCode: 'IN',
-    isDefault: false
-  });
+export default function AddressEditor({ cities, initialAddress = null, onSaved, onCancel }) {
+  const [values, setValues] = useState(() => ({
+    label: initialAddress?.label || 'Home',
+    line1: initialAddress?.line1 || '',
+    line2: initialAddress?.line2 || '',
+    cityId: initialAddress?.cityId || '',
+    areaId: initialAddress?.areaId || '',
+    city: initialAddress?.city || '',
+    region: initialAddress?.region || '',
+    postalCode: initialAddress?.postalCode || '',
+    countryCode: initialAddress?.countryCode || 'IN',
+    isDefault: initialAddress?.isDefault || false
+  }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const selectedCity = cities.find((city) => city.id === values.cityId);
@@ -31,14 +31,17 @@ export default function AddressEditor({ cities, onSaved, onCancel }) {
     setError('');
     try {
       const { line1, line2, areaId, cityId, region, ...rest } = values;
-      const address = await api.post('/addresses', {
+      const payload = {
         ...rest,
         line1,
         ...(line2 ? { line2 } : {}),
         ...(cityId ? { cityId } : {}),
         ...(areaId ? { areaId } : {}),
         ...(region ? { region } : {})
-      });
+      };
+      const address = initialAddress?.id
+        ? await api.put(`/addresses/${initialAddress.id}`, payload)
+        : await api.post('/addresses', payload);
       onSaved(address);
     } catch (requestError) {
       setError(getErrorMessage(requestError));

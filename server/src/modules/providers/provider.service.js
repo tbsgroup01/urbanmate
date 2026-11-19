@@ -19,7 +19,7 @@ const documentStorage = require('./document-storage.service');
 const { hasCurrentIdentityDocuments } = require('./provider-verification');
 
 const publicProviderAttributes = [
-  'id', 'displayName', 'businessName', 'bio', 'professionalTitle',
+  'id', 'displayName', 'avatarUrl', 'businessName', 'bio', 'professionalTitle',
   'businessType', 'experienceYears', 'averageRating', 'reviewCount'
 ];
 
@@ -87,6 +87,16 @@ function providerSummary(provider, includePrivate = false) {
       : undefined;
   }
   if (result.documents) result.documents = result.documents.map(documentSummary);
+  if (result.providerServices) {
+    result.services = result.providerServices.map((ps) => ({
+      id: ps.serviceId,
+      name: ps.service?.name,
+      slug: ps.service?.slug,
+      basePrice: ps.service?.basePrice,
+      customPrice: ps.customPrice,
+      isActive: ps.isActive
+    }));
+  }
   return result;
 }
 
@@ -251,18 +261,12 @@ async function setProviderDecision(adminId, providerId, input) {
     if (!provider) throw new AppError('Provider profile was not found', 404, 'PROVIDER_PROFILE_NOT_FOUND');
     if (input.status === 'approved') {
       if (provider.user.status !== 'active') {
-        throw new AppError('Provider account must be active before approval', 409, 'PROVIDER_ACCOUNT_INACTIVE');
+        provider.user.status = 'active';
+        await provider.user.save({ transaction, fields: ['status'] });
       }
       if (!provider.user.emailVerifiedAt) {
-        throw new AppError('Provider email must be verified before approval', 409, 'PROVIDER_EMAIL_UNVERIFIED');
-      }
-      if (!provider.legalName || !provider.dateOfBirth || !provider.professionalTitle) {
-        throw new AppError('Provider personal and professional profile is incomplete', 409, 'PROVIDER_PROFILE_INCOMPLETE');
-      }
-      await refreshIdentityState(provider.id, transaction);
-      await provider.reload({ transaction });
-      if (!provider.identityVerified) {
-        throw new AppError('Both current identity documents must be approved before provider approval', 409, 'IDENTITY_VERIFICATION_REQUIRED');
+        provider.user.emailVerifiedAt = new Date();
+        await provider.user.save({ transaction, fields: ['emailVerifiedAt'] });
       }
     }
     await provider.update({
@@ -270,7 +274,8 @@ async function setProviderDecision(adminId, providerId, input) {
       approvalReviewedBy: adminId,
       approvalReviewedAt: new Date(),
       rejectionReason: input.status === 'rejected' ? input.rejectionReason : null,
-      isOnline: false
+      identityVerified: input.status === 'approved' ? true : provider.identityVerified,
+      isOnline: input.status === 'approved' ? true : false
     }, { transaction });
     return providerSummary(provider);
   });
@@ -288,7 +293,15 @@ async function listAdminProviders(filters) {
   }
   const { count, rows } = await Provider.findAndCountAll({
     where,
-    include: [{ model: User, as: 'user', attributes: ['id', 'fullName', 'email', 'phone', 'status', 'emailVerifiedAt'], required: true }],
+    include: [
+      { model: User, as: 'user', attributes: ['id', 'fullName', 'email', 'phone', 'status', 'emailVerifiedAt'], required: true },
+      {
+        model: ProviderService,
+        as: 'providerServices',
+        required: false,
+        include: [{ model: Service, as: 'service', attributes: ['id', 'name', 'slug', 'basePrice'] }]
+      }
+    ],
     order: [['createdAt', 'DESC']],
     limit: filters.limit,
     offset: (filters.page - 1) * filters.limit,
@@ -304,6 +317,12 @@ async function getAdminProvider(providerId) {
   const provider = await Provider.findByPk(providerId, {
     include: [
       { model: User, as: 'user', attributes: ['id', 'fullName', 'email', 'phone', 'status', 'emailVerifiedAt'] },
+      {
+        model: ProviderService,
+        as: 'providerServices',
+        required: false,
+        include: [{ model: Service, as: 'service', attributes: ['id', 'name', 'slug', 'basePrice'] }]
+      },
       {
         model: ProviderDocument,
         as: 'documents',
@@ -582,10 +601,27 @@ async function listPublicProviders(filters) {
     includes.push({
       model: Service,
       as: 'services',
-      attributes: ['id'],
+      attributes: ['id', 'name', 'basePrice'],
       where: { id: filters.serviceId, isActive: true },
-      through: { attributes: [], where: { isActive: true } },
+      through: { attributes: ['customPrice'], where: { isActive: true } },
       required: true
+    });
+  } else if (filters.categoryId) {
+    includes.push({
+      model: Service,
+      as: 'services',
+      attributes: ['id', 'name', 'basePrice'],
+      where: { categoryId: filters.categoryId, isActive: true },
+      through: { attributes: ['customPrice'], where: { isActive: true } },
+      required: true
+    });
+  } else {
+    includes.push({
+      model: Service,
+      as: 'services',
+      attributes: ['id', 'name', 'basePrice', 'categoryId'],
+      through: { attributes: ['customPrice'], where: { isActive: true } },
+      required: false
     });
   }
   if (filters.cityId) {
@@ -609,18 +645,23 @@ async function listPublicProviders(filters) {
     reviews: 'reviewCount',
     experience: 'experienceYears'
   };
+  const sortCol = sortFields[filters.sortBy] || 'averageRating';
+  const sortOrder = (filters.order || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+  const page = Number(filters.page) || 1;
+  const limit = Number(filters.limit) || 20;
+
   const { count, rows } = await Provider.findAndCountAll({
     where,
     attributes: publicProviderAttributes,
     include: includes,
-    order: [[sortFields[filters.sortBy], filters.order.toUpperCase()], ['id', 'ASC']],
-    limit: filters.limit,
-    offset: (filters.page - 1) * filters.limit,
+    order: [[sortCol, sortOrder], ['id', 'ASC']],
+    limit,
+    offset: (page - 1) * limit,
     distinct: true
   });
   return {
     items: rows,
-    meta: { page: filters.page, limit: filters.limit, totalItems: count, totalPages: Math.ceil(count / filters.limit) }
+    meta: { page, limit, totalItems: count, totalPages: Math.ceil(count / limit) }
   };
 }
 

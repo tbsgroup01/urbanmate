@@ -1,27 +1,26 @@
 const app = require('./app');
 const env = require('./config/env');
-const logger = require('./config/logger');
 const { sequelize } = require('./models');
 
 async function start() {
   await sequelize.authenticate();
-  logger.info('Database connection established');
+  console.log('Database connected');
 
   const server = app.listen(env.PORT, () => {
-    logger.info({ port: env.PORT, environment: env.NODE_ENV }, 'API server listening');
+    console.log(`Server started on port ${env.PORT}`);
   });
 
   const shutdown = (signal) => {
-    logger.info({ signal }, 'Shutting down API server');
+    console.log(`Shutting down server (${signal})`);
     server.close(async (serverError) => {
       if (serverError) {
-        logger.error({ err: serverError }, 'HTTP server shutdown failed');
+        console.error('HTTP server shutdown failed:', serverError);
         process.exitCode = 1;
       }
       try {
         await sequelize.close();
       } catch (databaseError) {
-        logger.error({ err: databaseError }, 'Database connection shutdown failed');
+        console.error('Database connection shutdown failed:', databaseError);
         process.exitCode = 1;
       }
     });
@@ -32,6 +31,6 @@ async function start() {
 }
 
 start().catch((error) => {
-  logger.fatal({ err: error }, 'API startup failed');
+  console.error('Server startup failed:', error);
   process.exitCode = 1;
 });

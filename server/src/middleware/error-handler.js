@@ -1,6 +1,5 @@
 const { UniqueConstraintError, ForeignKeyConstraintError, ValidationError } = require('sequelize');
 const env = require('../config/env');
-const logger = require('../config/logger');
 const AppError = require('../utils/app-error');
 
 module.exports = (error, req, res, next) => {
@@ -22,9 +21,7 @@ module.exports = (error, req, res, next) => {
 
   const statusCode = normalized.statusCode || 500;
   if (statusCode >= 500) {
-    logger.error({ err: error, requestId: req.id, path: req.originalUrl }, 'Request failed');
-  } else {
-    logger.warn({ code: normalized.code, requestId: req.id, path: req.originalUrl }, normalized.message);
+    console.error(`[Server Error] ${req.method} ${req.originalUrl}:`, error.message || error);
   }
 
   const body = {

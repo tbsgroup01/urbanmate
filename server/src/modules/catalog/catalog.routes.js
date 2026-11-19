@@ -66,6 +66,7 @@ router.delete(
 
 router.get('/admin/services', ...adminOnly, validateRequest(listServicesSchema, 'query'), asyncHandler(controller.managedServices));
 router.post('/admin/services', ...adminOnly, validateRequest(serviceSchema), asyncHandler(controller.createService));
+router.post('/admin/upload-image', ...adminOnly, asyncHandler(controller.uploadImage));
 router.patch(
   '/admin/services/:serviceId',
   ...adminOnly,

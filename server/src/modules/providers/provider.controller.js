@@ -1,6 +1,10 @@
+const crypto = require('node:crypto');
+const path = require('node:path');
+const fs = require('node:fs');
 const providerService = require('./provider.service');
 const { success } = require('../../utils/api-response');
 const { ProviderAvailability } = require('../../models');
+const AppError = require('../../utils/app-error');
 
 async function myProfile(req, res) {
   return success(res, await providerService.getMyProfile(req.user.id));
@@ -119,9 +123,49 @@ async function decideProvider(req, res) {
   });
 }
 
+async function uploadAvatar(req, res) {
+  const { dataUrl } = req.body || {};
+  if (!dataUrl || typeof dataUrl !== 'string') {
+    throw new AppError('Image data URL is required', 400, 'INVALID_IMAGE');
+  }
+
+  const match = dataUrl.match(/^data:image\/(png|jpe?g|webp|gif);base64,(.+)$/i);
+  if (!match) {
+    throw new AppError('Invalid image format. Supported formats: JPEG, PNG, WebP, GIF', 400, 'INVALID_IMAGE_FORMAT');
+  }
+
+  const [, rawExt, base64Data] = match;
+  const ext = rawExt.toLowerCase() === 'jpeg' ? 'jpg' : rawExt.toLowerCase();
+  const buffer = Buffer.from(base64Data, 'base64');
+
+  if (buffer.length > 5 * 1024 * 1024) {
+    throw new AppError('Image file size exceeds the 5MB limit', 400, 'IMAGE_TOO_LARGE');
+  }
+
+  const uploadsDir = path.join(__dirname, '../../../public/uploads');
+  await fs.promises.mkdir(uploadsDir, { recursive: true });
+
+  const safeFilename = `avatar_${req.provider.id}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.${ext}`;
+  const filePath = path.join(uploadsDir, safeFilename);
+
+  await fs.promises.writeFile(filePath, buffer);
+
+  const protocol = req.protocol;
+  const host = req.get('host');
+  const avatarUrl = `${protocol}://${host}/uploads/${safeFilename}`;
+
+  await req.provider.update({ avatarUrl });
+
+  return success(res, { avatarUrl }, {
+    statusCode: 201,
+    message: 'Profile photo updated successfully'
+  });
+}
+
 module.exports = {
   myProfile,
   updateMyProfile,
+  uploadAvatar,
   requestDocumentUpload,
   completeDocumentUpload,
   myDocumentDownload,

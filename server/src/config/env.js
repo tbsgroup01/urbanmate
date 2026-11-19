@@ -8,7 +8,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   API_PREFIX: z.string().default('/api/v1'),
   CLIENT_ORIGIN: z.string().default('http://localhost:5173'),
-  DEFAULT_CURRENCY: z.string().regex(/^[A-Z]{3}$/).default('USD'),
+  DEFAULT_CURRENCY: z.string().regex(/^[A-Z]{3}$/).default('INR'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DB_HOST: z.string().default('127.0.0.1'),
   DB_PORT: z.coerce.number().int().positive().default(3306),

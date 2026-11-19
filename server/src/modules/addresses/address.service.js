@@ -41,4 +41,37 @@ async function createAddress(userId, input) {
   });
 }
 
-module.exports = { listAddresses, createAddress };
+async function deleteAddress(userId, addressId) {
+  const address = await Address.findOne({ where: { id: addressId, userId } });
+  if (!address) throw new AppError('Address not found', 404, 'NOT_FOUND');
+  await address.destroy();
+  const remaining = await Address.findOne({ where: { userId }, order: [['createdAt', 'DESC']] });
+  if (remaining && !remaining.isDefault) {
+    remaining.isDefault = true;
+    await remaining.save();
+  }
+  return { success: true };
+}
+
+async function updateAddress(userId, addressId, input) {
+  return sequelize.transaction(async (transaction) => {
+    const address = await Address.findOne({ where: { id: addressId, userId }, transaction });
+    if (!address) throw new AppError('Address not found', 404, 'NOT_FOUND');
+    if (input.cityId) {
+      const city = await City.findOne({ where: { id: input.cityId, isActive: true }, attributes: ['id'], transaction });
+      if (!city) throw new AppError('City was not found or is unavailable', 400, 'INVALID_ADDRESS_CITY');
+    }
+    if (input.areaId) {
+      const area = await Area.findOne({ where: { id: input.areaId, cityId: input.cityId || address.cityId, isActive: true }, attributes: ['id'], transaction });
+      if (!area) throw new AppError('Area does not belong to the selected city', 400, 'INVALID_ADDRESS_AREA');
+    }
+    if (input.isDefault) {
+      await Address.update({ isDefault: false }, { where: { userId }, transaction });
+    }
+    Object.assign(address, input);
+    await address.save({ transaction });
+    return address;
+  });
+}
+
+module.exports = { listAddresses, createAddress, deleteAddress, updateAddress };

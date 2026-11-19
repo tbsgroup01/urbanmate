@@ -152,7 +152,7 @@ export default function AuthDialog({
       ? 'Create your account and tell us a little about your work.'
       : 'A better home starts with a little help.',
     forgot: 'We’ll email a reset link if an account matches.',
-    reset: 'Use at least 10 characters for your new password.'
+    reset: 'Use at least 6 characters for your new password.'
   }[mode];
 
   return (
@@ -289,17 +289,17 @@ export default function AuthDialog({
 
         {passwordModes.has(mode) && (
           <>
-            <Field label="Password" hint={mode === 'login' ? undefined : '10+ characters; up to 72 UTF-8 bytes'}>
+            <Field label="Password" hint={mode === 'login' ? undefined : '6+ characters; up to 72 UTF-8 bytes'}>
               <div className="relative">
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   value={values.password}
                   onChange={update('password')}
                   required
-                  minLength={mode === 'login' ? 1 : 10}
+                  minLength={mode === 'login' ? 1 : 6}
                   maxLength={72}
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  placeholder={mode === 'login' ? 'Enter your password' : 'At least 10 characters'}
+                  placeholder={mode === 'login' ? 'Enter your password' : 'At least 6 characters'}
                   className="pr-12"
                 />
                 <button
@@ -319,7 +319,7 @@ export default function AuthDialog({
                   value={values.confirmPassword}
                   onChange={update('confirmPassword')}
                   required
-                  minLength={10}
+                  minLength={6}
                   maxLength={72}
                   autoComplete="new-password"
                   placeholder="Enter your password again"

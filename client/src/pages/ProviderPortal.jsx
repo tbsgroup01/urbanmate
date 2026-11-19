@@ -2,13 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpRight,
   BadgeCheck,
+  Bell,
   CalendarDays,
+  Camera,
   Check,
   Clock3,
+  IndianRupee,
   FileCheck2,
   Plus,
   Save,
+  Search,
+  ShieldAlert,
   ShieldCheck,
+  Trash2,
+  UploadCloud,
   Wallet,
   Wrench
 } from 'lucide-react';
@@ -61,7 +68,16 @@ function Overview({ user, onNavigate }) {
       setLoading(false);
     }
   }
-  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(() => {
+      api.get('/bookings', { page: '1', limit: '100' })
+        .then(setBookings)
+        .catch(() => {});
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
 
   const requests = bookings.filter((booking) => booking.status === 'assigned');
   const active = bookings.filter((booking) => activeStatuses.includes(booking.status));
@@ -73,7 +89,36 @@ function Overview({ user, onNavigate }) {
 
   return (
     <div className="space-y-7">
-      <SectionHeading eyebrow="Your work at a glance" title={`Good to see you, ${user.fullName?.split(' ')[0] || 'partner'}.`} description="Here’s what’s happening with your Urbanmate work today." />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          {user.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt={user.fullName}
+              className="h-16 w-16 shrink-0 rounded-2xl object-cover border-2 border-emerald-300 shadow-sm"
+            />
+          ) : (
+            <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-xl font-black text-emerald-800 border border-emerald-200">
+              {user.fullName?.split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'P'}
+            </span>
+          )}
+          <div>
+            <SectionHeading
+              eyebrow="Your work at a glance"
+              title={`Good to see you, ${user.fullName?.split(' ')[0] || 'partner'}.`}
+              description="Here’s what’s happening with your Urbanmate work today."
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:self-center">
+          <Button variant="secondary" size="sm" onClick={() => onNavigate('services')}>
+            <Wrench size={14} /> My services
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => onNavigate('profile')}>
+            <Camera size={14} /> Photo & profile
+          </Button>
+        </div>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { title: 'New requests', value: requests.length, sub: 'Need your response', icon: CalendarDays, color: 'bg-amber-50 text-amber-700', tab: 'requests' },
@@ -131,7 +176,16 @@ function BookingList({ mode }) {
       setLoading(false);
     }
   }
-  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(() => {
+      api.get('/bookings', { page: '1', limit: '100' })
+        .then(setBookings)
+        .catch(() => {});
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
 
   const visible = bookings.filter((booking) => mode === 'requests'
     ? booking.status === 'assigned'
@@ -161,23 +215,48 @@ function BookingList({ mode }) {
     <div>
       <SectionHeading eyebrow="My bookings" title={headings[mode][0]} description={headings[mode][1]} />
       {loading ? <PageLoader /> : error ? <ErrorState message={error} onRetry={load} /> : visible.length ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {visible.map((booking) => (
-            <Card key={booking.id} className="p-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <Card key={booking.id} className="p-5 sm:p-6 border border-slate-200/90 shadow-sm transition hover:shadow-md">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-start gap-4">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><CalendarDays size={19} /></span>
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 shadow-xs border border-emerald-100">
+                    <CalendarDays size={20} />
+                  </span>
                   <div>
-                    <div className="flex flex-wrap items-center gap-2"><h3 className="font-extrabold text-slate-900">{booking.serviceNameSnapshot || booking.service?.name}</h3><StatusBadge status={booking.status} /></div>
-                    <p className="mt-1 text-xs text-slate-500">{booking.bookingNumber} · {new Date(booking.scheduledStart).toLocaleString()}</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-700">{currency(booking.total, booking.currency)} <span className="font-normal text-slate-400">· Customer booking</span></p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-black text-slate-900 text-base sm:text-lg">{booking.serviceNameSnapshot || booking.service?.name}</h3>
+                      <StatusBadge status={booking.status} />
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 font-medium">
+                      Booking {booking.bookingNumber} · <span className="font-bold text-slate-700">{new Date(booking.scheduledStart).toLocaleString()}</span>
+                    </p>
+                    <p className="mt-1.5 text-sm font-extrabold text-slate-900">
+                      {currency(booking.total, booking.currency || 'INR')} <span className="font-normal text-xs text-slate-400">· Customer payout</span>
+                    </p>
+
+                    {/* Customer & Location Details Card */}
+                    <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-slate-100 bg-[#f8faf9] px-3.5 py-2.5 text-xs text-slate-600">
+                      <span className="font-bold text-slate-800">👤 {booking.customer?.fullName || 'Customer'}</span>
+                      {booking.customer?.phone && <span className="font-semibold text-emerald-800">📞 {booking.customer.phone}</span>}
+                      {booking.address && (
+                        <span className="font-medium text-slate-600">
+                          📍 {booking.address.line1}{booking.address.city ? `, ${booking.address.city}` : ''} {booking.address.postalCode || ''}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+
+                <div className="flex flex-wrap gap-2.5 sm:self-center shrink-0">
                   {booking.status === 'assigned' && (
                     <>
-                      <Button size="sm" disabled={busy === booking.id} onClick={() => action(booking.id, 'accept')}><Check size={14} /> Accept</Button>
-                      <Button size="sm" variant="danger" disabled={busy === booking.id} onClick={() => action(booking.id, 'reject', { reason: 'Unable to take this booking' })}>Decline</Button>
+                      <Button size="sm" disabled={busy === booking.id} onClick={() => action(booking.id, 'accept')}>
+                        <Check size={14} strokeWidth={2.5} /> Accept Request
+                      </Button>
+                      <Button size="sm" variant="danger" disabled={busy === booking.id} onClick={() => action(booking.id, 'reject', { reason: 'Unable to take this booking' })}>
+                        Decline
+                      </Button>
                     </>
                   )}
                   {booking.status === 'confirmed' && <Button size="sm" disabled={busy === booking.id} onClick={() => action(booking.id, 'start')}>Start job</Button>}
@@ -274,6 +353,273 @@ function AvailabilityEditor() {
   );
 }
 
+function ProviderServices() {
+  const [catalogServices, setCatalogServices] = useState([]);
+  const [selectedServices, setSelectedServices] = useState({}); // map of serviceId -> { customPrice, isActive }
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
+  async function load() {
+    setLoading(true);
+    setError('');
+    try {
+      const [allServices, myServices] = await Promise.all([
+        api.get('/catalog/services', { limit: '100' }),
+        api.get('/providers/me/services')
+      ]);
+
+      setCatalogServices(allServices || []);
+
+      const map = {};
+      (myServices || []).forEach((item) => {
+        map[item.serviceId] = {
+          customPrice: item.customPrice != null ? item.customPrice : '',
+          isActive: item.isActive !== false
+        };
+      });
+      setSelectedServices(map);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  function toggleService(serviceId) {
+    setSelectedServices((prev) => {
+      const copy = { ...prev };
+      if (copy[serviceId]) {
+        delete copy[serviceId];
+      } else {
+        copy[serviceId] = {
+          customPrice: '',
+          isActive: true
+        };
+      }
+      return copy;
+    });
+    setMessage('');
+  }
+
+  function updatePrice(serviceId, customPrice) {
+    setSelectedServices((prev) => ({
+      ...prev,
+      [serviceId]: {
+        ...(prev[serviceId] || { isActive: true }),
+        customPrice
+      }
+    }));
+    setMessage('');
+  }
+
+  function updateActive(serviceId, isActive) {
+    setSelectedServices((prev) => ({
+      ...prev,
+      [serviceId]: {
+        ...(prev[serviceId] || { customPrice: '' }),
+        isActive
+      }
+    }));
+    setMessage('');
+  }
+
+  async function save() {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const payload = Object.entries(selectedServices).map(([serviceId, conf]) => ({
+        serviceId,
+        customPrice: conf.customPrice !== '' && !isNaN(Number(conf.customPrice)) ? Number(conf.customPrice) : null,
+        isActive: conf.isActive !== false
+      }));
+
+      await api.put('/providers/me/services', { services: payload });
+      setMessage('Your services and pricing have been saved successfully.');
+      await load();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const categories = useMemo(() => {
+    const map = new Map();
+    catalogServices.forEach((s) => {
+      if (s.category) map.set(s.category.id, s.category.name);
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [catalogServices]);
+
+  const filteredServices = useMemo(() => {
+    return catalogServices.filter((s) => {
+      const matchesSearch = !search.trim() ||
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.description?.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory = selectedCategory === 'all' || s.categoryId === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [catalogServices, search, selectedCategory]);
+
+  const selectedCount = Object.keys(selectedServices).length;
+
+  if (loading) return <PageLoader label="Loading marketplace services…" />;
+  if (error && !catalogServices.length) return <ErrorState message={error} onRetry={load} />;
+
+  return (
+    <div className="space-y-6">
+      <SectionHeading
+        eyebrow="Marketplace offerings"
+        title="My services & rates"
+        description="Select the services you provide to customers. You can use standard platform pricing or set your own competitive custom rate."
+        action={
+          <Button onClick={save} disabled={busy}>
+            {busy ? 'Saving changes…' : 'Save services'} <Save size={15} />
+          </Button>
+        }
+      />
+
+      {/* Top Banner & Stats */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50/50 p-4 sm:p-5">
+        <div className="flex items-center gap-3">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white shadow-sm">
+            <Wrench size={22} />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-900">
+              {selectedCount} of {catalogServices.length} services selected
+            </h3>
+            <p className="text-xs text-slate-600">
+              Admins and customers will only see the services you enable below.
+            </p>
+          </div>
+        </div>
+        <Button onClick={save} disabled={busy} size="sm">
+          {busy ? 'Saving…' : 'Save services'} <Save size={14} />
+        </Button>
+      </div>
+
+      {message && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">{message}</p>}
+      {error && <p role="alert" className="rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</p>}
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search services by title or description…"
+            className="pl-10"
+          />
+        </div>
+        {categories.length > 0 && (
+          <Select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="w-full sm:w-56"
+          >
+            <option value="all">All categories ({catalogServices.length})</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </Select>
+        )}
+      </div>
+
+      {/* Service Cards Grid */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {filteredServices.map((service) => {
+          const isSelected = Boolean(selectedServices[service.id]);
+          const config = selectedServices[service.id] || { customPrice: '', isActive: true };
+
+          return (
+            <Card
+              key={service.id}
+              className={`p-5 transition-all border-2 ${
+                isSelected
+                  ? 'border-emerald-600 bg-emerald-50/20 shadow-sm'
+                  : 'border-slate-100 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  {service.category?.name && (
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
+                      {service.category.name}
+                    </span>
+                  )}
+                  <h4 className="font-extrabold text-slate-900 line-clamp-1">{service.name}</h4>
+                  <p className="mt-1 text-xs text-slate-500 line-clamp-2">{service.description || 'Professional service by certified experts.'}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleService(service.id)}
+                  className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                />
+              </div>
+
+              <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
+                <span>Standard platform rate</span>
+                <span className="font-bold text-slate-900">{currency(service.basePrice, 'INR')}</span>
+              </div>
+
+              {isSelected ? (
+                <div className="mt-3 space-y-2 rounded-xl bg-white p-3 border border-emerald-100 shadow-2xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-bold text-slate-700">Your price (₹)</label>
+                    <div className="w-28">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder={`₹${service.basePrice}`}
+                        value={config.customPrice}
+                        onChange={(e) => updatePrice(service.id, e.target.value)}
+                        className="py-1 px-2 text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-slate-600">Active status</span>
+                    <button
+                      type="button"
+                      onClick={() => updateActive(service.id, !config.isActive)}
+                      className={`text-xs font-bold px-2.5 py-1 rounded-lg transition ${
+                        config.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {config.isActive ? 'Active' : 'Paused'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => toggleService(service.id)}
+                  className="mt-3 w-full rounded-xl border border-dashed border-slate-300 py-2 text-xs font-bold text-slate-600 hover:border-emerald-500 hover:bg-emerald-50/40 hover:text-emerald-800 transition cursor-pointer"
+                >
+                  + Offer this service
+                </button>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function Earnings() {
   const [earnings, setEarnings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -325,6 +671,9 @@ function ProviderProfile({ user, onUserUpdate }) {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const [avatarMessage, setAvatarMessage] = useState('');
 
   async function load() {
     setLoading(true);
@@ -344,6 +693,46 @@ function ProviderProfile({ user, onUserUpdate }) {
     setMessage('');
   }
 
+  async function uploadAvatar(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.match(/^image\/(png|jpe?g|webp|gif)$/i)) {
+      setAvatarError('Please select a PNG, JPG, WebP, or GIF image.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('Profile photo must be 5MB or less.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setAvatarError('');
+    setAvatarMessage('');
+
+    try {
+      const reader = new FileReader();
+      const dataUrl = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Failed to read image file.'));
+        reader.readAsDataURL(file);
+      });
+
+      const res = await api.post('/providers/me/avatar', { dataUrl });
+      const newAvatarUrl = res.avatarUrl;
+      setProfile((current) => ({ ...current, avatarUrl: newAvatarUrl }));
+      setAvatarMessage('Profile photo updated successfully!');
+      if (onUserUpdate) {
+        onUserUpdate({ ...user, avatarUrl: newAvatarUrl });
+      }
+    } catch (requestError) {
+      setAvatarError(getErrorMessage(requestError));
+    } finally {
+      setUploadingAvatar(false);
+      event.target.value = '';
+    }
+  }
+
   async function saveProfile(event) {
     event.preventDefault();
     setBusy(true);
@@ -353,7 +742,8 @@ function ProviderProfile({ user, onUserUpdate }) {
         displayName: profile.displayName,
         businessName: profile.businessName || null,
         professionalTitle: profile.professionalTitle || null,
-        bio: profile.bio || null
+        bio: profile.bio || null,
+        ...(profile.avatarUrl ? { avatarUrl: profile.avatarUrl } : {})
       });
       setProfile((current) => ({ ...current, ...updated }));
       setMessage('Your professional profile has been saved.');
@@ -401,7 +791,58 @@ function ProviderProfile({ user, onUserUpdate }) {
     <div>
       <SectionHeading eyebrow="Your professional profile" title="Profile & documents" description="Help customers understand the services and experience you bring." />
       <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <Card className="p-5 sm:p-6">
+        <Card className="p-5 sm:p-6 space-y-5">
+          {/* Profile Photo Section */}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 pb-5 border-b border-slate-100">
+            <div className="relative shrink-0">
+              {profile.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={profile.displayName}
+                  className="h-20 w-20 rounded-2xl object-cover border-2 border-emerald-300 shadow-sm"
+                />
+              ) : (
+                <div className="grid h-20 w-20 place-items-center rounded-2xl bg-emerald-50 text-xl font-black text-emerald-800 border-2 border-dashed border-emerald-200">
+                  {profile.displayName?.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'P'}
+                </div>
+              )}
+              <label
+                className="absolute -bottom-1 -right-1 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-emerald-600 text-white shadow-md hover:bg-emerald-700 transition"
+                title="Change photo"
+              >
+                <Camera size={14} />
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="sr-only"
+                  onChange={uploadAvatar}
+                  disabled={uploadingAvatar}
+                />
+              </label>
+            </div>
+            <div className="min-w-0 flex-1 text-center sm:text-left space-y-1">
+              <h3 className="font-extrabold text-slate-900">Profile photo</h3>
+              <p className="text-xs text-slate-500">
+                A clear profile picture helps customers identify you and builds confidence. JPEG, PNG, or WebP up to 5 MB.
+              </p>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50/70 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition">
+                  <UploadCloud size={14} />
+                  {uploadingAvatar ? 'Uploading…' : 'Upload photo'}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="sr-only"
+                    onChange={uploadAvatar}
+                    disabled={uploadingAvatar}
+                  />
+                </label>
+                {avatarMessage && <span className="text-xs font-bold text-emerald-700">{avatarMessage}</span>}
+              </div>
+              {avatarError && <p className="text-xs text-rose-600 font-medium">{avatarError}</p>}
+            </div>
+          </div>
+
           <form onSubmit={saveProfile} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Display name"><Input value={profile.displayName || ''} onChange={(event) => update('displayName', event.target.value)} required minLength={2} /></Field>
@@ -453,12 +894,67 @@ function ProviderProfile({ user, onUserUpdate }) {
 }
 
 export default function ProviderPortal({ user, active, onTabChange, onUserUpdate }) {
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    function check() {
+      api.get('/bookings', { page: '1', limit: '100' })
+        .then((items) => {
+          const list = Array.isArray(items) ? items : (items?.items || []);
+          const pending = list.filter((b) => b.status === 'assigned').length;
+          setPendingCount(pending);
+        })
+        .catch(() => {});
+    }
+    check();
+    const interval = setInterval(check, 3500);
+    return () => clearInterval(interval);
+  }, []);
+
   const content = useMemo(() => {
     if (active === 'requests' || active === 'active' || active === 'history') return <BookingList mode={active} />;
+    if (active === 'services') return <ProviderServices />;
     if (active === 'availability') return <AvailabilityEditor />;
     if (active === 'earnings') return <Earnings />;
     if (active === 'profile') return <ProviderProfile user={user} onUserUpdate={onUserUpdate} />;
     return <Overview user={user} onNavigate={onTabChange} />;
   }, [active, user, onTabChange, onUserUpdate]);
-  return content;
+
+  return (
+    <div>
+      {pendingCount > 0 && active !== 'requests' && (
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 p-4 shadow-sm animate-pulse">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-700 text-white shadow-xs">
+              <Bell size={20} />
+            </span>
+            <div>
+              <h3 className="font-black text-sm text-emerald-950">
+                You have {pendingCount} new service booking request{pendingCount > 1 ? 's' : ''} waiting!
+              </h3>
+              <p className="text-xs text-emerald-800">Review customer details and accept the request to secure this appointment.</p>
+            </div>
+          </div>
+          <Button size="sm" onClick={() => onTabChange('requests')}>
+            Review &amp; Accept →
+          </Button>
+        </div>
+      )}
+
+      {user?.providerApprovalStatus === 'pending' && (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5 text-amber-900">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="mt-0.5 shrink-0 text-amber-600" size={20} />
+            <div>
+              <h3 className="font-extrabold text-amber-950">Application Pending Review</h3>
+              <p className="mt-1 text-sm leading-6 text-amber-800">
+                Your provider account is awaiting administrator approval. You can still set up your profile, working hours, and upload verification documents in the &quot;Profile &amp; documents&quot; tab. Once approved by an admin, you will be able to receive booking requests and go online.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      {content}
+    </div>
+  );
 }

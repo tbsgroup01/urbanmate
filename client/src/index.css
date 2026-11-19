@@ -59,6 +59,20 @@ button {
   background-clip: padding-box;
 }
 
+/* Hide scrollbars completely for clean horizontal layouts */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
 .modal-backdrop {
   animation: modal-fade-in 180ms ease-out both;
 }

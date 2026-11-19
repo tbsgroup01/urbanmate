@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('node:crypto');
+const fs = require('fs');
+const path = require('path');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const env = require('../../config/env');
@@ -12,6 +14,7 @@ const {
   Role,
   UserRole,
   Provider,
+  Booking,
   RefreshToken,
   PasswordResetToken,
   OtpVerification
@@ -55,22 +58,66 @@ function getUserSummary(user) {
     id: user.id,
     fullName: user.fullName,
     email: user.email,
+    phone: user.phone || null,
+    avatarUrl: user.avatarUrl || user.providerProfile?.avatarUrl || null,
     emailVerified: Boolean(user.emailVerifiedAt),
-    roles: user.roles.map((role) => role.name),
+    roles: user.roles ? user.roles.map((role) => (typeof role === 'string' ? role : role.name)) : [],
     ...(user.providerProfile
       ? {
         providerApprovalStatus: user.providerProfile.approvalStatus,
-        providerIdentityVerified: user.providerProfile.identityVerified
+        providerIdentityVerified: user.providerProfile.identityVerified,
+        avatarUrl: user.providerProfile.avatarUrl || user.avatarUrl || null
       }
       : {})
   };
+}
+
+async function updateProfile(userId, { fullName, phone, avatarUrl }) {
+  const user = await User.findByPk(userId, {
+    include: [
+      { model: Role, as: 'roles', attributes: ['name'], through: { attributes: [] } },
+      { model: Provider, as: 'providerProfile', attributes: ['id', 'approvalStatus', 'identityVerified', 'avatarUrl'], required: false }
+    ]
+  });
+  if (!user) throw new AppError('User not found', 404, 'NOT_FOUND');
+  if (fullName && typeof fullName === 'string' && fullName.trim()) {
+    user.fullName = fullName.trim();
+  }
+  if (phone !== undefined) {
+    user.phone = phone ? phone.trim() : null;
+  }
+  if (avatarUrl !== undefined) {
+    if (avatarUrl && avatarUrl.startsWith('data:image/')) {
+      const match = avatarUrl.match(/^data:image\/(png|jpe?g|webp|gif);base64,(.+)$/i);
+      if (match) {
+        const rawExt = match[1].toLowerCase();
+        const ext = rawExt === 'jpeg' ? 'jpg' : rawExt;
+        const buffer = Buffer.from(match[2], 'base64');
+        const uploadsDir = path.join(__dirname, '../../../public/uploads');
+        await fs.promises.mkdir(uploadsDir, { recursive: true });
+        const safeFilename = `avatar_${userId}_${Date.now()}.${ext}`;
+        await fs.promises.writeFile(path.join(uploadsDir, safeFilename), buffer);
+        user.avatarUrl = `/uploads/${safeFilename}`;
+      } else {
+        user.avatarUrl = avatarUrl;
+      }
+    } else {
+      user.avatarUrl = avatarUrl ? avatarUrl.trim() : null;
+    }
+    if (user.providerProfile && user.avatarUrl) {
+      user.providerProfile.avatarUrl = user.avatarUrl;
+      await user.providerProfile.save();
+    }
+  }
+  await user.save();
+  return getUserSummary(user);
 }
 
 async function loadUserWithRoles(userId, transaction) {
   return User.findByPk(userId, {
     include: [
       { model: Role, as: 'roles', attributes: ['name'], through: { attributes: [] } },
-      { model: Provider, as: 'providerProfile', attributes: ['id', 'approvalStatus', 'identityVerified'], required: false }
+      { model: Provider, as: 'providerProfile', attributes: ['id', 'approvalStatus', 'identityVerified', 'avatarUrl'], required: false }
     ],
     transaction
   });
@@ -188,7 +235,7 @@ async function login(input, expectedRole, metadata) {
     where: { email: input.email },
     include: [
       { model: Role, as: 'roles', attributes: ['id', 'name'], through: { attributes: [] } },
-      { model: Provider, as: 'providerProfile', attributes: ['id', 'approvalStatus', 'identityVerified'], required: false }
+      { model: Provider, as: 'providerProfile', attributes: ['id', 'approvalStatus', 'identityVerified', 'avatarUrl'], required: false }
     ]
   });
 
@@ -426,6 +473,75 @@ async function updateAccountStatus(userId, status) {
   });
 }
 
+async function listUsers({ page = 1, limit = 50, q, status, role } = {}) {
+  const parsedPage = Math.max(1, Number(page) || 1);
+  const parsedLimit = Math.min(100, Math.max(1, Number(limit) || 50));
+  const where = {};
+  if (status && status !== 'all') where.status = status;
+  if (q && q.trim()) {
+    const search = q.trim();
+    where[Op.or] = [
+      { fullName: { [Op.like]: `%${search}%` } },
+      { email: { [Op.like]: `%${search}%` } },
+      { phone: { [Op.like]: `%${search}%` } }
+    ];
+  }
+
+  const roleWhere = role && role !== 'all' ? { name: role } : undefined;
+
+  const { count, rows } = await User.findAndCountAll({
+    where,
+    attributes: ['id', 'fullName', 'email', 'phone', 'status', 'emailVerifiedAt', 'createdAt'],
+    include: [
+      {
+        model: Role,
+        as: 'roles',
+        attributes: ['name'],
+        where: roleWhere,
+        through: { attributes: [] }
+      },
+      {
+        model: Booking,
+        as: 'customerBookings',
+        attributes: ['id', 'total', 'status'],
+        required: false
+      }
+    ],
+    order: [['createdAt', 'DESC']],
+    limit: parsedLimit,
+    offset: (parsedPage - 1) * parsedLimit,
+    distinct: true
+  });
+
+  return {
+    items: rows.map((u) => {
+      const bookings = u.customerBookings || [];
+      const totalSpent = bookings
+        .filter((b) => b.status === 'completed')
+        .reduce((sum, b) => sum + Number(b.total || 0), 0);
+
+      return {
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        phone: u.phone,
+        status: u.status,
+        emailVerified: Boolean(u.emailVerifiedAt),
+        roles: (u.roles || []).map((r) => r.name),
+        bookingCount: bookings.length,
+        totalSpent: Math.round(totalSpent * 100) / 100,
+        createdAt: u.createdAt
+      };
+    }),
+    meta: {
+      page: parsedPage,
+      limit: parsedLimit,
+      totalItems: count,
+      totalPages: Math.ceil(count / parsedLimit)
+    }
+  };
+}
+
 module.exports = {
   registerCustomer,
   registerProvider,
@@ -439,5 +555,7 @@ module.exports = {
   requestEmailOtp,
   verifyEmailOtp,
   updateAccountStatus,
-  getUserSummary
+  listUsers,
+  getUserSummary,
+  updateProfile
 };

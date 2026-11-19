@@ -168,9 +168,10 @@ export function SectionHeading({ eyebrow, title, description, action }) {
 }
 
 export function currency(value, code = 'INR') {
+  const normalizedCode = (!code || code === 'USD') ? 'INR' : code;
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: code,
+    currency: normalizedCode,
     maximumFractionDigits: 0
   }).format(Number(value || 0));
 }

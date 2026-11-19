@@ -95,9 +95,19 @@ async function currentUser(req, res) {
   return success(res, authService.getUserSummary(req.user));
 }
 
+async function updateMe(req, res) {
+  const result = await authService.updateProfile(req.user.id, req.body || {});
+  return success(res, result, { message: 'Profile updated successfully' });
+}
+
 async function updateAccountStatus(req, res) {
   const result = await authService.updateAccountStatus(req.params.userId, req.body.status);
   return success(res, result, { message: 'Account status updated' });
+}
+
+async function listUsers(req, res) {
+  const result = await authService.listUsers(req.query);
+  return success(res, result.items, { meta: result.meta });
 }
 
 module.exports = {
@@ -112,5 +122,7 @@ module.exports = {
   requestEmailOtp,
   verifyEmailOtp,
   currentUser,
-  updateAccountStatus
+  updateMe,
+  updateAccountStatus,
+  listUsers
 };

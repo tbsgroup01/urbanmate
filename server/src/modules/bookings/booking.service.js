@@ -21,6 +21,7 @@ const {
 } = require('../../models');
 const AppError = require('../../utils/app-error');
 const { calculateEffectivePrice, roundPrice } = require('../catalog/pricing');
+const { sendSystemEmail } = require('../settings/settings.service');
 const {
   assertProviderAvailable,
   findAvailableProvider,
@@ -162,6 +163,43 @@ async function notifyUsers(booking, userIds, type, message, transaction) {
     type,
     message
   })), { transaction });
+
+  // Asynchronously send system email notifications if SMTP is enabled
+  (async () => {
+    try {
+      const users = await User.findAll({ where: { id: recipientIds }, attributes: ['id', 'email', 'fullName'] });
+      for (const recipient of users) {
+        if (!recipient.email) continue;
+        const isProvider = recipient.id !== booking.customerId;
+        const subject = isProvider
+          ? `🔔 New Booking Request: ${booking.bookingNumber}`
+          : `✅ Booking Update: ${booking.bookingNumber}`;
+        const title = isProvider ? 'New Service Booking Request' : 'Service Booking Update';
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+            <h2 style="color: #047857; margin-top: 0;">${title}</h2>
+            <p style="font-size: 15px; color: #334155;">${message}</p>
+            <div style="background: #f8fafc; border-left: 4px solid #10b981; padding: 12px 16px; margin: 20px 0; border-radius: 6px;">
+              <p style="margin: 4px 0; font-size: 14px;"><strong>Booking Number:</strong> ${booking.bookingNumber}</p>
+              <p style="margin: 4px 0; font-size: 14px;"><strong>Service:</strong> ${booking.serviceNameSnapshot || 'Home Service'}</p>
+              <p style="margin: 4px 0; font-size: 14px;"><strong>Scheduled Time:</strong> ${new Date(booking.scheduledStart).toLocaleString()}</p>
+              <p style="margin: 4px 0; font-size: 14px;"><strong>Total:</strong> ₹${Number(booking.total || 0).toFixed(0)}</p>
+              <p style="margin: 4px 0; font-size: 14px;"><strong>Current Status:</strong> ${booking.status}</p>
+            </div>
+            <p style="font-size: 13px; color: #64748b;">Log in to your UrbanMate account to review and respond.</p>
+          </div>
+        `;
+        await sendSystemEmail({
+          to: recipient.email,
+          subject,
+          text: `${title}\n\n${message}\n\nBooking: ${booking.bookingNumber}\nScheduled: ${new Date(booking.scheduledStart).toLocaleString()}`,
+          html
+        });
+      }
+    } catch {
+      // Background email failures are logged safely
+    }
+  })();
 }
 
 async function getProviderUserId(providerId, transaction) {
@@ -292,6 +330,9 @@ async function listAvailableProviders(userId, input) {
       transaction,
       distinct: true
     });
+    if (input.providerId) {
+      candidates.sort((a, b) => (a.id === input.providerId ? -1 : b.id === input.providerId ? 1 : 0));
+    }
     const eligible = [];
     for (const candidate of candidates) {
       try {
@@ -341,7 +382,10 @@ async function listBookings(user, { page, limit }) {
     });
     if (!provider) throw new AppError('Provider profile was not found', 404, 'PROVIDER_PROFILE_NOT_FOUND');
     if (provider.approvalStatus !== 'approved') {
-      throw new AppError('Provider account is awaiting approval or is unavailable', 403, 'PROVIDER_NOT_APPROVED');
+      return {
+        items: [],
+        meta: { page, limit, totalItems: 0, totalPages: 0 }
+      };
     }
     where.providerId = provider.id;
   } else if (!roles.includes('admin')) {
@@ -351,8 +395,10 @@ async function listBookings(user, { page, limit }) {
   const { count, rows } = await Booking.findAndCountAll({
     where,
     include: [
-      { model: Service, as: 'service', attributes: ['id', 'name', 'slug'] },
-      { model: Provider, as: 'provider', attributes: ['id', 'displayName'], required: false },
+      { model: Service, as: 'service', attributes: ['id', 'name', 'slug', 'basePrice'] },
+      { model: Provider, as: 'provider', attributes: ['id', 'displayName', 'avatarUrl'], required: false },
+      { model: User, as: 'customer', attributes: ['id', 'fullName', 'email', 'phone'], required: false },
+      { model: Address, as: 'address', attributes: ['id', 'line1', 'line2', 'city', 'postalCode'], required: false },
       { model: BookingServiceItem, as: 'serviceItems' }
     ],
     order: [['createdAt', 'DESC']],
@@ -648,6 +694,71 @@ async function markNotificationRead(userId, notificationId) {
   return notification;
 }
 
+async function getAdminFinanceStats() {
+  const allBookings = await Booking.findAll({
+    include: [
+      { model: Service, as: 'service', attributes: ['id', 'name'] },
+      { model: Provider, as: 'provider', attributes: ['id', 'displayName', 'avatarUrl'] },
+      { model: User, as: 'customer', attributes: ['id', 'fullName', 'email', 'phone'] }
+    ],
+    order: [['createdAt', 'DESC']]
+  });
+
+  let totalGrossVolume = 0;
+  let completedVolume = 0;
+  let completedCount = 0;
+  let pendingCount = 0;
+
+  const transactions = [];
+
+  for (const b of allBookings) {
+    const total = Number(b.total || 0);
+    totalGrossVolume += total;
+
+    if (b.status === 'completed') {
+      completedVolume += total;
+      completedCount++;
+    } else if (['pending', 'assigned', 'confirmed', 'in_progress'].includes(b.status)) {
+      pendingCount++;
+    }
+
+    const commission = Math.round((total * 0.15) * 100) / 100;
+    const providerPayout = Math.round((total - commission) * 100) / 100;
+
+    transactions.push({
+      id: b.id,
+      bookingNumber: b.bookingNumber,
+      createdAt: b.createdAt,
+      scheduledStart: b.scheduledStart,
+      serviceName: b.serviceNameSnapshot || b.service?.name || 'Home service',
+      customerName: b.customer?.fullName || 'Customer',
+      customerEmail: b.customer?.email,
+      providerName: b.provider?.displayName || 'Unassigned',
+      amount: total,
+      commission,
+      providerPayout,
+      currency: b.currency && b.currency !== 'USD' ? b.currency : 'INR',
+      status: b.status === 'completed' ? 'settled' : b.status === 'cancelled' ? 'refunded' : 'pending'
+    });
+  }
+
+  const platformRevenue = Math.round((completedVolume * 0.15) * 100) / 100;
+  const providerPayouts = Math.round((completedVolume - platformRevenue) * 100) / 100;
+
+  return {
+    metrics: {
+      totalGrossVolume: Math.round(totalGrossVolume * 100) / 100,
+      completedVolume: Math.round(completedVolume * 100) / 100,
+      platformRevenue,
+      providerPayouts,
+      totalBookings: allBookings.length,
+      completedCount,
+      pendingCount
+    },
+    transactions
+  };
+}
+
 module.exports = {
   createBooking,
   listBookings,
@@ -660,5 +771,6 @@ module.exports = {
   rescheduleBooking,
   manuallyAssignBooking,
   listNotifications,
-  markNotificationRead
+  markNotificationRead,
+  getAdminFinanceStats
 };

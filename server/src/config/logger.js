@@ -1,11 +1,12 @@
-const pino = require('pino');
-const env = require('./env');
-
-module.exports = pino({
-  level: env.LOG_LEVEL,
-  redact: {
-    paths: ['req.headers.authorization', 'password', 'passwordHash', 'req.body.password'],
-    censor: '[REDACTED]'
+module.exports = {
+  info: () => {},
+  debug: () => {},
+  warn: () => {},
+  error: (obj, msg) => {
+    if (typeof obj === 'string') console.error(obj);
+    else if (msg) console.error(`[Error] ${msg}:`, obj?.err?.message || obj?.message || '');
   },
-  timestamp: pino.stdTimeFunctions.isoTime
-});
+  fatal: (obj, msg) => {
+    console.error(`[Fatal] ${msg || ''}:`, obj?.err?.message || obj?.message || '');
+  }
+};

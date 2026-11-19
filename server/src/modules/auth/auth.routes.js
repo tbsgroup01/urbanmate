@@ -92,8 +92,16 @@ router.post('/password/forgot', recoveryLimiter, validateRequest(forgotPasswordS
 router.post('/password/reset', recoveryLimiter, validateRequest(resetPasswordSchema), asyncHandler(controller.resetPassword));
 
 router.get('/me', authenticate, asyncHandler(controller.currentUser));
+router.patch('/me', authenticate, asyncHandler(controller.updateMe));
 router.post('/otp/email/request', authenticate, otpLimiter, asyncHandler(controller.requestEmailOtp));
 router.post('/otp/email/verify', authenticate, otpLimiter, validateRequest(otpVerifySchema), asyncHandler(controller.verifyEmailOtp));
+
+router.get(
+  '/admin/users',
+  authenticate,
+  requireExclusiveRole('admin'),
+  asyncHandler(controller.listUsers)
+);
 
 router.patch(
   '/admin/users/:userId/status',

@@ -35,6 +35,7 @@ const categorySchema = z.object({
   name: z.string().trim().min(2).max(100),
   slug,
   description: optionalText(5000),
+  imageUrl: z.string().url().max(2048).nullable().optional(),
   sortOrder: z.coerce.number().int().min(0).max(100000).default(0),
   isActive: z.boolean().default(true)
 });

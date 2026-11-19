@@ -41,6 +41,7 @@ router.post('/reviews', authenticate, requireExclusiveRole('customer'), validate
 
 router.get('/me/profile', ...providerOnly, asyncHandler(controller.myProfile));
 router.patch('/me/profile', ...providerOnly, validateRequest(profileSchema), asyncHandler(controller.updateMyProfile));
+router.post('/me/avatar', ...providerOnly, asyncHandler(controller.uploadAvatar));
 router.get('/me/services', ...providerOnly, asyncHandler(controller.myServices));
 router.put('/me/services', ...providerOnly, validateRequest(providerServicesSchema), asyncHandler(controller.setServices));
 router.get('/me/service-areas', ...providerOnly, asyncHandler(controller.myAreas));

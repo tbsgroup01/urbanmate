@@ -10,5 +10,7 @@ const router = express.Router();
 router.use(authenticate, requireRole('customer'));
 router.get('/', asyncHandler(controller.list));
 router.post('/', validateRequest(createAddressSchema), asyncHandler(controller.create));
+router.put('/:addressId', asyncHandler(controller.update));
+router.delete('/:addressId', asyncHandler(controller.remove));
 
 module.exports = router;

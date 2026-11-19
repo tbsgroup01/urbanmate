@@ -1,7 +1,7 @@
 const { z } = require('zod');
 
 const passwordSchema = z.string()
-  .min(10)
+  .min(6)
   .max(72)
   .refine((value) => Buffer.byteLength(value, 'utf8') <= 72, 'Password must be at most 72 UTF-8 bytes');
 

@@ -139,13 +139,14 @@ async function listCategories({ page = 1, limit = 100, q, parentId, includeSubca
 
   const { count, rows } = await ServiceCategory.findAndCountAll({
     where,
-    attributes: ['id', 'parentId', 'name', 'slug', 'description', 'isActive', 'sortOrder', 'createdAt'],
+    attributes: ['id', 'parentId', 'name', 'slug', 'description', 'imageUrl', 'isActive', 'sortOrder', 'createdAt'],
     include: [
       { model: ServiceCategory, as: 'parent', attributes: ['id', 'name', 'slug'], required: false },
+      { model: Service, as: 'services', attributes: ['id', 'name', 'isActive'], required: false },
       ...(includeSubcategories ? [{
         model: ServiceCategory,
         as: 'children',
-        attributes: ['id', 'name', 'slug', 'description', 'isActive', 'sortOrder'],
+        attributes: ['id', 'name', 'slug', 'description', 'imageUrl', 'isActive', 'sortOrder'],
         where: includeInactive ? undefined : { isActive: true },
         required: false
       }] : [])
@@ -269,7 +270,6 @@ function makeServiceIncludes({ includeInactive = false, location = {}, detailed 
       model: ServiceImage,
       as: 'images',
       attributes: ['id', 'imageUrl', 'altText', 'sortOrder'],
-      where: active,
       required: false,
       separate: true,
       order: [['sortOrder', 'ASC']]

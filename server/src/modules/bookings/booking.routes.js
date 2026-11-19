@@ -23,6 +23,7 @@ router.get('/availability', requireRole('customer'), validateRequest(availablePr
 router.get('/notifications', validateRequest(listBookingsSchema, 'query'), asyncHandler(controller.notifications));
 router.patch('/notifications/:notificationId/read', validateRequest(notificationIdParamsSchema, 'params'), asyncHandler(controller.markNotificationRead));
 router.post('/', requireRole('customer'), validateRequest(createBookingSchema), asyncHandler(controller.create));
+router.get('/admin/finance', requireRole('admin'), asyncHandler(controller.adminFinance));
 router.get('/:bookingId/history', requireRole('customer', 'provider', 'admin'), validateRequest(bookingIdParamsSchema, 'params'), asyncHandler(controller.history));
 router.patch('/:bookingId/assign', requireRole('admin'), validateRequest(bookingIdParamsSchema, 'params'), validateRequest(assignBookingSchema), asyncHandler(controller.assign));
 router.patch('/:bookingId/reschedule', requireRole('customer', 'admin'), validateRequest(bookingIdParamsSchema, 'params'), validateRequest(rescheduleBookingSchema), asyncHandler(controller.reschedule));
