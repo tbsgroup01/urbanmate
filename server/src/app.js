@@ -59,7 +59,7 @@ if (env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
-app.get(['/health', '/health/live'], (req, res) => success(res, { status: 'ok' }, { message: 'Liveness check passed' }));
+app.get(['/health', '/health/live'], (req, res) => success(res, { status: 'ok' }, { message: 'Liveness check passeddd' }));
 app.get('/health/ready', async (req, res, next) => {
   try {
     await sequelize.authenticate();
