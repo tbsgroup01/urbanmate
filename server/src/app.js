@@ -29,6 +29,8 @@ app.disable('x-powered-by');
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
+
+
 app.use(cors({
   origin: env.CLIENT_ORIGIN.split(',').map((origin) => origin.trim()),
   credentials: true

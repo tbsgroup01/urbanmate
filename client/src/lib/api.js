@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1').replace(/\/$/, '');
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'https://urbanmate.towsindia.com/api/v1').replace(/\/$/, '');
 const TOKEN_KEY = 'urbanmate_access_token';
 
 let accessToken = sessionStorage.getItem(TOKEN_KEY);
