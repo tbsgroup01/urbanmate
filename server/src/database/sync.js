@@ -1,5 +1,7 @@
 'use strict';
 
+const path = require('node:path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 require('dotenv').config();
 const { sequelize, Role, ServiceCategory, Service, SystemSetting } = require('../models');
 

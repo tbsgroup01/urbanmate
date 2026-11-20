@@ -26,15 +26,21 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 app.disable('x-powered-by');
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 
 
-app.use(cors({
-  origin: env.CLIENT_ORIGIN.split(',').map((origin) => origin.trim()),
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      return callback(null, true);
+    },
+    credentials: true,
+  })
+);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));

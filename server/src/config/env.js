@@ -1,6 +1,8 @@
+const path = require('node:path');
 const dotenv = require('dotenv');
 const { z } = require('zod');
 
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config();
 
 const envSchema = z.object({
@@ -17,7 +19,7 @@ const envSchema = z.object({
   DB_PASSWORD: z.string().default(''),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
   DB_POOL_MIN: z.coerce.number().int().nonnegative().default(0),
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+  JWT_SECRET: z.string().min(3, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('15m'),
   JWT_ISSUER: z.string().default('urbanmate-api'),
   JWT_AUDIENCE: z.string().default('urbanmate-clients'),

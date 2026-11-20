@@ -399,15 +399,19 @@ async function listServices(filters, { includeInactive = false } = {}) {
     duration: [['durationMinutes', filters.order.toUpperCase()]],
     createdAt: [['createdAt', filters.order.toUpperCase()]]
   };
-  const { count, rows } = await Service.findAndCountAll({
+  const count = await Service.count({
+    where,
+    distinct: true,
+    col: 'id'
+  });
+  const rows = await Service.findAll({
     where,
     attributes: [...publicServiceAttributes, [selectedPrice, 'effectivePrice']],
     include: makeServiceIncludes({ includeInactive, location }),
     order: [...sortFields[filters.sortBy], ['id', 'ASC']],
     limit: filters.limit,
     offset: (filters.page - 1) * filters.limit,
-    distinct: true,
-    subQuery: true
+    subQuery: false
   });
 
   return {
