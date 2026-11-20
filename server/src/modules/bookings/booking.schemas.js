@@ -7,7 +7,9 @@ const createBookingSchema = z.object({
   addonIds: z.array(z.string().uuid()).max(20).default([]),
   addressId: z.string().uuid(),
   scheduledStart: z.string().datetime({ offset: true }).transform((value) => new Date(value)),
-  customerNotes: z.string().trim().max(2000).optional()
+  customerNotes: z.string().trim().max(2000).optional(),
+  paymentMethod: z.enum(['cod', 'upi', 'razorpay', 'card']).optional(),
+  paymentTransactionId: z.string().trim().max(160).optional()
 }).superRefine((value, context) => {
   if (new Set(value.addonIds).size !== value.addonIds.length) {
     context.addIssue({ code: 'custom', path: ['addonIds'], message: 'An add-on can only be selected once' });

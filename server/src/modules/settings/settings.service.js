@@ -177,7 +177,7 @@ async function sendTestEmail({ toEmail, mailSettings }) {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
           <h2 style="color: #6d28d9; margin-top: 0;">UrbanMate Mail Configuration Test</h2>
           <p style="font-size: 15px; color: #334155;">Great news! Your SMTP configuration is working perfectly.</p>
-          <div style="background: #f8fafc; border-left: 4px solid #10b981; padding: 12px 16px; margin: 20px 0; border-radius: 4px;">
+          <div style="background: #f8fafc; border-left: 4px solid #7c3aed; padding: 12px 16px; margin: 20px 0; border-radius: 4px;">
             <p style="margin: 4px 0; font-size: 14px;"><strong>SMTP Host:</strong> ${config.host}</p>
             <p style="margin: 4px 0; font-size: 14px;"><strong>Port:</strong> ${port}</p>
             <p style="margin: 4px 0; font-size: 14px;"><strong>Encryption:</strong> ${config.encryption || (isSecure ? 'SSL' : 'TLS')}</p>

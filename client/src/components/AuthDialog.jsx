@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
   BriefcaseBusiness,
+  CheckCircle2,
   ChevronDown,
   Eye,
   EyeOff,
+  KeyRound,
+  ShieldCheck,
   Sparkles,
   UserRound
 } from 'lucide-react';
@@ -33,6 +36,19 @@ export default function AuthDialog({
   const [providerDetailsOpen, setProviderDetailsOpen] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [forgotStep, setForgotStep] = useState(1); // 1 = email, 2 = otp, 3 = new password
+  const [otp, setOtp] = useState('');
+  const [activeResetToken, setActiveResetToken] = useState(resetToken || '');
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    let timer;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
   const [values, setValues] = useState({
     fullName: '',
     email: '',
@@ -60,11 +76,32 @@ export default function AuthDialog({
     setError('');
     setNotice('');
     setShowPassword(false);
+    if (nextMode === 'forgot') {
+      setForgotStep(1);
+      setOtp('');
+      setActiveResetToken('');
+    }
   }
 
   function optionalValue(key) {
     const value = values[key].trim();
     return value ? { [key]: value } : {};
+  }
+
+  async function handleResendOtp() {
+    if (resendCooldown > 0 || busy) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await api.post('/auth/password/forgot', { email: values.email.trim() });
+      setResendCooldown(60);
+      setNotice(`A new 6-digit OTP code has been sent to ${values.email.trim()}.`);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submit(event) {
@@ -75,21 +112,70 @@ export default function AuthDialog({
 
     try {
       if (mode === 'forgot') {
-        await api.post('/auth/password/forgot', { email: values.email });
-        setNotice('If an account exists for that email, reset instructions will be sent.');
-        return;
+        if (forgotStep === 1) {
+          if (!values.email.trim()) {
+            setError('Please enter your email address.');
+            return;
+          }
+          await api.post('/auth/password/forgot', { email: values.email.trim() });
+          setForgotStep(2);
+          setResendCooldown(60);
+          setNotice(`A 6-digit OTP code has been sent to ${values.email.trim()}.`);
+          return;
+        }
+
+        if (forgotStep === 2) {
+          if (!otp.trim() || otp.trim().length !== 6) {
+            setError('Please enter the 6-digit verification code.');
+            return;
+          }
+          const verifyRes = await api.post('/auth/password/verify-otp', {
+            email: values.email.trim(),
+            otp: otp.trim()
+          });
+          setActiveResetToken(verifyRes.resetToken);
+          setForgotStep(3);
+          setNotice('OTP code verified! Please set your new password below.');
+          return;
+        }
+
+        if (forgotStep === 3) {
+          if (!values.password || values.password.length < 6) {
+            setError('Password must be at least 6 characters.');
+            return;
+          }
+          if (values.password !== values.confirmPassword) {
+            setError('Your passwords do not match.');
+            return;
+          }
+          await api.post('/auth/password/reset', {
+            email: values.email.trim(),
+            resetToken: activeResetToken,
+            password: values.password
+          });
+          setValues((current) => ({ ...current, password: '', confirmPassword: '' }));
+          setForgotStep(1);
+          changeMode('login');
+          setNotice('Password updated successfully! You can now sign in with your new password.');
+          return;
+        }
       }
 
       if (mode === 'reset') {
-        if (!resetToken) {
-          setError('This reset link is incomplete. Request a new password reset email.');
+        const tokenToUse = activeResetToken || resetToken;
+        if (!tokenToUse) {
+          setError('This reset session is incomplete or expired. Request a new OTP code.');
+          return;
+        }
+        if (values.password.length < 6) {
+          setError('Password must be at least 6 characters.');
           return;
         }
         if (values.password !== values.confirmPassword) {
           setError('Your passwords do not match.');
           return;
         }
-        await api.post('/auth/password/reset', { token: resetToken, password: values.password });
+        await api.post('/auth/password/reset', { token: tokenToUse, password: values.password });
         setValues((current) => ({ ...current, password: '', confirmPassword: '' }));
         onResetComplete?.();
         changeMode('login');
@@ -143,7 +229,11 @@ export default function AuthDialog({
   const heading = {
     login: 'Welcome back',
     register: role === 'provider' ? 'Start your provider application' : 'Create your account',
-    forgot: 'Reset your password',
+    forgot: forgotStep === 1
+      ? 'Forgot your password?'
+      : forgotStep === 2
+        ? 'Verify 6-digit OTP'
+        : 'Create new password',
     reset: 'Choose a new password'
   }[mode];
   const description = {
@@ -151,14 +241,18 @@ export default function AuthDialog({
     register: role === 'provider'
       ? 'Create your account and tell us a little about your work.'
       : 'A better home starts with a little help.',
-    forgot: 'We’ll email a reset link if an account matches.',
+    forgot: forgotStep === 1
+      ? 'Enter your email address and we will send a 6-digit verification code.'
+      : forgotStep === 2
+        ? `Enter the 6-digit OTP sent to ${values.email}.`
+        : 'Enter your new password to regain access to your account.',
     reset: 'Use at least 6 characters for your new password.'
   }[mode];
 
   return (
     <div key={mode} className="auth-step space-y-5">
       <div className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
           {role === 'provider' ? <BriefcaseBusiness size={19} /> : <Sparkles size={19} />}
         </span>
         <div>
@@ -273,7 +367,7 @@ export default function AuthDialog({
           </>
         )}
 
-        {(mode === 'login' || mode === 'register' || mode === 'forgot') && (
+        {(mode === 'login' || mode === 'register' || (mode === 'forgot' && forgotStep === 1)) && (
           <Field label="Email address">
             <Input
               type="email"
@@ -287,9 +381,61 @@ export default function AuthDialog({
           </Field>
         )}
 
-        {passwordModes.has(mode) && (
+        {mode === 'forgot' && forgotStep === 2 && (
+          <div className="space-y-3.5">
+            <div className="rounded-xl bg-violet-50/90 p-3 text-xs text-violet-900 border border-violet-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={16} className="text-violet-700 shrink-0" />
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Verification code sent to</span>
+                  <span className="font-bold text-violet-950">{values.email}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setForgotStep(1); setError(''); setNotice(''); }}
+                className="text-xs font-bold text-violet-700 hover:text-violet-900 underline"
+              >
+                Change
+              </button>
+            </div>
+
+            <Field label="6-Digit Verification Code (OTP)">
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setOtp(val);
+                  setError('');
+                }}
+                autoFocus
+                placeholder="••••••"
+                className="text-center font-mono text-2xl tracking-[0.35em] font-black text-violet-950"
+                required
+              />
+            </Field>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs text-slate-500">Didn’t receive the code?</span>
+              <button
+                type="button"
+                disabled={resendCooldown > 0 || busy}
+                onClick={handleResendOtp}
+                className="text-xs font-bold text-violet-700 hover:text-violet-800 disabled:text-slate-400 disabled:cursor-not-allowed"
+              >
+                {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP code'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {(passwordModes.has(mode) || (mode === 'forgot' && forgotStep === 3)) && (
           <>
-            <Field label="Password" hint={mode === 'login' ? undefined : '6+ characters; up to 72 UTF-8 bytes'}>
+            <Field label={mode === 'login' ? 'Password' : 'New password'} hint={mode === 'login' ? undefined : '6+ characters; up to 72 UTF-8 bytes'}>
               <div className="relative">
                 <Input
                   type={showPassword ? 'text' : 'password'}
@@ -312,8 +458,8 @@ export default function AuthDialog({
                 </button>
               </div>
             </Field>
-            {(mode === 'register' || mode === 'reset') && (
-              <Field label="Confirm password">
+            {(mode === 'register' || mode === 'reset' || (mode === 'forgot' && forgotStep === 3)) && (
+              <Field label="Confirm new password">
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   value={values.confirmPassword}
@@ -335,7 +481,7 @@ export default function AuthDialog({
           </p>
         )}
         {error && <p role="alert" className="rounded-xl bg-rose-50 px-3.5 py-3 text-sm text-rose-700">{error}</p>}
-        {notice && <p role="status" className="rounded-xl bg-emerald-50 px-3.5 py-3 text-sm text-emerald-800">{notice}</p>}
+        {notice && <p role="status" className="rounded-xl bg-violet-50 px-3.5 py-3 text-sm text-violet-800">{notice}</p>}
 
         <Button
           type="submit"
@@ -349,7 +495,11 @@ export default function AuthDialog({
               : mode === 'register'
                 ? role === 'provider' ? 'Create provider account' : 'Create account'
                 : mode === 'forgot'
-                  ? 'Send reset link'
+                  ? forgotStep === 1
+                    ? 'Send 6-digit OTP'
+                    : forgotStep === 2
+                      ? 'Verify code'
+                      : 'Save new password'
                   : 'Reset password'}
           {!busy && <ArrowRight size={16} />}
         </Button>
@@ -357,7 +507,7 @@ export default function AuthDialog({
 
       <div className="flex flex-col items-center gap-3 text-center">
         {mode === 'login' && (
-          <button type="button" onClick={() => changeMode('forgot')} className="text-sm font-semibold text-slate-500 transition hover:text-emerald-700">
+          <button type="button" onClick={() => changeMode('forgot')} className="text-sm font-semibold text-slate-500 transition hover:text-violet-700">
             Forgot your password?
           </button>
         )}
@@ -365,18 +515,18 @@ export default function AuthDialog({
           <button
             type="button"
             onClick={() => changeMode('register')}
-            className="text-sm font-semibold text-slate-500 transition hover:text-emerald-700"
+            className="text-sm font-semibold text-slate-500 transition hover:text-violet-700"
           >
             New to Urbanmate? Create an account
           </button>
         )}
         {mode === 'register' && role !== 'admin' && (
-          <button type="button" onClick={() => changeMode('login')} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-emerald-700">
+          <button type="button" onClick={() => changeMode('login')} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-violet-700">
             <ArrowLeft size={14} /> Back to sign in
           </button>
         )}
         {(mode === 'forgot' || mode === 'reset') && (
-          <button type="button" onClick={() => changeMode('login')} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-emerald-700">
+          <button type="button" onClick={() => changeMode('login')} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-violet-700">
             <ArrowLeft size={14} /> Back to sign in
           </button>
         )}

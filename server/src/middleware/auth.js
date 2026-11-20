@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 const AppError = require('../utils/app-error');
 const asyncHandler = require('../utils/async-handler');
-const { User, Role } = require('../models');
+const { User, Role, Provider } = require('../models');
 const { authorize, authorizeExclusive } = require('./authorization');
 
 const authenticate = asyncHandler(async (req, res, next) => {
@@ -31,8 +31,11 @@ const authenticate = asyncHandler(async (req, res, next) => {
   }
 
   const user = await User.findByPk(payload.sub, {
-    attributes: ['id', 'fullName', 'email', 'status', 'emailVerifiedAt', 'authVersion'],
-    include: [{ model: Role, as: 'roles', attributes: ['name'], through: { attributes: [] } }]
+    attributes: ['id', 'fullName', 'email', 'phone', 'avatarUrl', 'status', 'emailVerifiedAt', 'authVersion', 'createdAt'],
+    include: [
+      { model: Role, as: 'roles', attributes: ['name'], through: { attributes: [] } },
+      { model: Provider, as: 'providerProfile', attributes: ['id', 'approvalStatus', 'identityVerified', 'avatarUrl'], required: false }
+    ]
   });
 
   if (!user || user.status !== 'active') {

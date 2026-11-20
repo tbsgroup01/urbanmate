@@ -37,9 +37,19 @@ const forgotPasswordSchema = z.object({
   email: z.string().trim().email().max(254).transform((value) => value.toLowerCase())
 });
 
+const forgotPasswordVerifyOtpSchema = z.object({
+  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
+  otp: z.string().trim().regex(/^\d{6}$/, 'Verification code must be a 6-digit number')
+});
+
 const resetPasswordSchema = z.object({
-  token: z.string().min(40).max(100),
+  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()).optional(),
+  resetToken: z.string().min(1).optional(),
+  token: z.string().min(1).optional(),
+  otp: z.string().trim().regex(/^\d{6}$/).optional(),
   password: passwordSchema
+}).refine((data) => data.resetToken || data.token || (data.email && data.otp), {
+  message: 'Reset token or verification OTP is required to change password'
 });
 
 const otpVerifySchema = z.object({
@@ -59,6 +69,7 @@ module.exports = {
   loginSchema,
   providerRegisterSchema,
   forgotPasswordSchema,
+  forgotPasswordVerifyOtpSchema,
   resetPasswordSchema,
   otpVerifySchema,
   userStatusSchema,

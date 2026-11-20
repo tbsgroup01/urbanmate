@@ -66,19 +66,29 @@ async function logout(req, res) {
 }
 
 async function forgotPassword(req, res) {
-  await authService.requestPasswordReset(req.body.email, requestMetadata(req));
+  const result = await authService.requestPasswordReset(req.body.email, requestMetadata(req));
   return success(
     res,
-    null,
-    { statusCode: 202, message: 'If the account exists, password reset instructions will be sent' }
+    result,
+    { statusCode: 200, message: 'A 6-digit verification code has been sent to your email.' }
+  );
+}
+
+async function verifyPasswordOtp(req, res) {
+  const result = await authService.verifyPasswordResetOtp(req.body.email, req.body.otp);
+  return success(
+    res,
+    result,
+    { statusCode: 200, message: 'OTP verified successfully. You may now enter your new password.' }
   );
 }
 
 async function resetPassword(req, res) {
-  await authService.resetPassword(req.body.token, req.body.password);
+  const { token, resetToken, email, otp, password } = req.body;
+  await authService.resetPassword({ token, resetToken, email, otp }, password);
   res.clearCookie(refreshCookieName, cookieOptions());
   res.set('Cache-Control', 'no-store');
-  return success(res, null, { message: 'Password has been reset; sign in again' });
+  return success(res, null, { message: 'Password has been reset successfully. Please sign in.' });
 }
 
 async function requestEmailOtp(req, res) {
@@ -118,6 +128,7 @@ module.exports = {
   refresh,
   logout,
   forgotPassword,
+  verifyPasswordOtp,
   resetPassword,
   requestEmailOtp,
   verifyEmailOtp,

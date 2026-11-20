@@ -268,7 +268,7 @@ async function setBookingStatus(booking, actorUserId, status, transaction, optio
 }
 
 async function createBooking(customerId, input) {
-  return sequelize.transaction(async (transaction) => {
+  const createdBooking = await sequelize.transaction(async (transaction) => {
     const context = await getBookingContext(customerId, input, transaction);
     let assigned;
     if (input.providerId) {
@@ -315,6 +315,20 @@ async function createBooking(customerId, input) {
 
     await syncBookingCommission(booking, transaction);
 
+    if (input.paymentMethod) {
+      await Payment.create({
+        id: crypto.randomUUID(),
+        bookingId: booking.id,
+        providerName: input.paymentMethod === 'upi' ? 'UPI QR' : input.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Gateway',
+        providerTransactionId: input.paymentTransactionId || `TXN-${input.paymentMethod.toUpperCase()}-${Date.now()}`,
+        amount: subtotal,
+        currency: env.DEFAULT_CURRENCY,
+        status: input.paymentMethod === 'cod' ? 'pending' : 'captured',
+        method: input.paymentMethod,
+        paidAt: input.paymentMethod === 'cod' ? null : new Date()
+      }, { transaction });
+    }
+
     const bookingItems = [
       ...(context.selectedPackage ? [{
         bookingId: booking.id,
@@ -347,6 +361,16 @@ async function createBooking(customerId, input) {
       transaction
     });
   });
+
+  // When real-time data arrives, automatically clean up dummy bookings for this customer
+  try {
+    const { purgeDummyBookings } = require('../../database/dummy-service');
+    await purgeDummyBookings({ customerId });
+  } catch (purgeError) {
+    console.warn('Auto dummy cleanup notice:', purgeError.message);
+  }
+
+  return createdBooking;
 }
 
 async function listAvailableProviders(userId, input) {
@@ -418,6 +442,17 @@ async function listBookings(user, { page, limit }) {
   const roles = user.roles.map((role) => role.name);
   const where = {};
 
+  try {
+    const { autoPurgeIfRealDataExists } = require('../../database/dummy-service');
+    if (roles.includes('customer')) {
+      await autoPurgeIfRealDataExists({ customerId: user.id });
+    } else if (roles.includes('admin')) {
+      await autoPurgeIfRealDataExists({ all: true });
+    }
+  } catch (err) {
+    console.warn('Auto-purge check notice:', err.message);
+  }
+
   if (roles.includes('customer')) {
     where.customerId = user.id;
   } else if (roles.includes('provider')) {
@@ -433,6 +468,12 @@ async function listBookings(user, { page, limit }) {
       };
     }
     where.providerId = provider.id;
+    try {
+      const { autoPurgeIfRealDataExists } = require('../../database/dummy-service');
+      await autoPurgeIfRealDataExists({ providerId: provider.id });
+    } catch (err) {
+      console.warn('Auto-purge check notice:', err.message);
+    }
   } else if (!roles.includes('admin')) {
     throw new AppError('No booking access is configured for this account', 403, 'FORBIDDEN');
   }

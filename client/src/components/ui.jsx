@@ -1,7 +1,10 @@
+import React, { useState } from 'react';
 import { AlertCircle, LoaderCircle, Sparkles } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
+import { resolveMediaUrl } from '../lib/api';
 
 const buttonStyles = {
-  primary: 'bg-emerald-700 text-white shadow-sm hover:bg-emerald-800',
+  primary: 'bg-violet-700 text-white shadow-sm hover:bg-violet-800',
   secondary: 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50',
   quiet: 'text-slate-600 hover:bg-slate-100',
   danger: 'bg-rose-50 text-rose-700 hover:bg-rose-100'
@@ -30,15 +33,42 @@ export function Button({
 }
 
 export function Brand({ compact = false, dark = false }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-700 text-white shadow-sm">
-        <Sparkles size={18} strokeWidth={2.2} />
-      </span>
-      {!compact && (
+  const { settings } = useSettings();
+  const [imgError, setImgError] = useState(false);
+  const logoUrl = !imgError && settings?.logoUrl ? settings.logoUrl : null;
+  const siteName = settings?.siteName || 'UrbanMate';
+
+  const renderName = () => {
+    if (siteName.toLowerCase() === 'urbanmate') {
+      return (
         <span className={`text-[17px] font-extrabold tracking-tight ${dark ? 'text-white' : 'text-slate-900'}`}>
           urban<span className={dark ? 'text-fuchsia-300' : 'text-violet-700'}>mate</span>
         </span>
+      );
+    }
+    return (
+      <span className={`text-[17px] font-extrabold tracking-tight truncate max-w-[200px] ${dark ? 'text-white' : 'text-slate-900'}`}>
+        {siteName}
+      </span>
+    );
+  };
+
+  return (
+    <div className="flex items-center gap-2.5">
+      {logoUrl ? (
+        <img
+          src={resolveMediaUrl(logoUrl)}
+          alt={siteName}
+          onError={() => setImgError(true)}
+          className="h-9 sm:h-10 w-auto max-h-10 max-w-[180px] object-contain"
+        />
+      ) : (
+        <>
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-700 text-white shadow-sm shrink-0">
+            <Sparkles size={18} strokeWidth={2.2} />
+          </span>
+          {!compact && renderName()}
+        </>
       )}
     </div>
   );
@@ -55,7 +85,8 @@ export function Card({ children, className = '', ...props }) {
 export function Badge({ children, tone = 'slate' }) {
   const tones = {
     slate: 'bg-slate-100 text-slate-600',
-    green: 'bg-emerald-50 text-emerald-700',
+    violet: 'bg-violet-50 text-violet-700 border border-violet-200/80',
+    purple: 'bg-purple-50 text-purple-700 border border-purple-200/80',
     amber: 'bg-amber-50 text-amber-700',
     blue: 'bg-sky-50 text-sky-700',
     rose: 'bg-rose-50 text-rose-700'
@@ -66,7 +97,7 @@ export function Badge({ children, tone = 'slate' }) {
 export function PageLoader({ label = 'Loading your workspace…' }) {
   return (
     <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-sm text-slate-500">
-      <LoaderCircle className="animate-spin text-emerald-700" size={25} />
+      <LoaderCircle className="animate-spin text-violet-700" size={25} />
       {label}
     </div>
   );
@@ -85,7 +116,7 @@ export function ErrorState({ message, onRetry }) {
 export function EmptyState({ icon: Icon, title, description, action }) {
   return (
     <div className="flex min-h-[230px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white px-6 text-center">
-      {Icon && <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700"><Icon size={22} /></span>}
+      {Icon && <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-violet-700"><Icon size={22} /></span>}
       <h3 className="font-bold text-slate-800">{title}</h3>
       <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">{description}</p>
       {action && <div className="mt-4">{action}</div>}
@@ -128,7 +159,7 @@ export function Field({ label, hint, children }) {
 export function Input({ className = '', ...props }) {
   return (
     <input
-      className={`w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 ${className}`}
+      className={`w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-violet-600 focus:ring-4 focus:ring-violet-600/10 ${className}`}
       {...props}
     />
   );
@@ -137,7 +168,7 @@ export function Input({ className = '', ...props }) {
 export function Select({ className = '', children, ...props }) {
   return (
     <select
-      className={`w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-800 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 ${className}`}
+      className={`w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-800 outline-none transition focus:border-violet-600 focus:ring-4 focus:ring-violet-600/10 ${className}`}
       {...props}
     >
       {children}
@@ -148,7 +179,7 @@ export function Select({ className = '', children, ...props }) {
 export function Textarea({ className = '', ...props }) {
   return (
     <textarea
-      className={`w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 ${className}`}
+      className={`w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-violet-600 focus:ring-4 focus:ring-violet-600/10 ${className}`}
       {...props}
     />
   );
@@ -158,7 +189,7 @@ export function SectionHeading({ eyebrow, title, description, action }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        {eyebrow && <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[0.16em] text-emerald-700">{eyebrow}</p>}
+        {eyebrow && <p className="mb-1 text-[11px] font-extrabold uppercase tracking-[0.16em] text-violet-700">{eyebrow}</p>}
         <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{title}</h1>
         {description && <p className="mt-1.5 text-sm text-slate-500">{description}</p>}
       </div>

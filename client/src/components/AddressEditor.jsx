@@ -105,7 +105,7 @@ export default function AddressEditor({ cities, initialAddress = null, onSaved, 
       </div>
       <div className="flex items-center justify-between gap-3 pt-1">
         <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={values.isDefault} onChange={(event) => update('isDefault', event.target.checked)} className="accent-emerald-700" />
+          <input type="checkbox" checked={values.isDefault} onChange={(event) => update('isDefault', event.target.checked)} className="accent-violet-700" />
           Make this my default address
         </label>
         <span className="text-xs font-semibold text-slate-400">{values.countryCode}</span>

@@ -10,6 +10,7 @@ import {
 } from 'react-router-dom';
 import {
   ArrowUpRight,
+  Award,
   Bell,
   BriefcaseBusiness,
   CalendarDays,
@@ -20,6 +21,7 @@ import {
   LogOut,
   Menu,
   PackageSearch,
+  Rocket,
   Settings,
   Shield,
   ShoppingBag,
@@ -38,7 +40,7 @@ import {
   PageLoader,
   initials
 } from './components/ui';
-import { api, getAccessToken, getErrorMessage, refreshAccessToken, setAccessToken } from './lib/api';
+import { api, getAccessToken, getErrorMessage, refreshAccessToken, resolveMediaUrl, setAccessToken } from './lib/api';
 import CustomerPortal from './pages/CustomerPortal';
 import ProviderPortal from './pages/ProviderPortal';
 import AdminPortal from './pages/AdminPortal';
@@ -98,27 +100,39 @@ function getSavedCart() {
 }
 
 function PortalNav({ portal, active, onChange, mobile = false, providerRequestsCount = 0, customerPendingConfirmCount = 0 }) {
+  const isProvider = portal === 'provider';
+
   return (
     <nav className={mobile ? 'grid grid-cols-4 gap-1' : 'space-y-1'}>
       {portalConfig[portal]?.nav.map(({ id, label, icon: Icon }) => {
         const hasProviderBadge = portal === 'provider' && id === 'requests' && providerRequestsCount > 0;
         const hasCustomerBadge = portal === 'customer' && id === 'bookings' && customerPendingConfirmCount > 0;
         const badgeCount = hasProviderBadge ? providerRequestsCount : hasCustomerBadge ? customerPendingConfirmCount : 0;
-        const badgeColor = hasCustomerBadge ? 'bg-amber-600' : 'bg-rose-600';
+        const badgeColor = hasCustomerBadge ? 'bg-amber-600' : 'bg-rose-500';
+
+        const isCurrentActive = active === id;
+
+        let buttonStyle = '';
+        if (isProvider) {
+          buttonStyle = isCurrentActive
+            ? 'bg-[#ede9fe] text-[#4c1d95] font-black shadow-md shadow-violet-950/40'
+            : 'text-violet-200/80 hover:bg-white/10 hover:text-white font-semibold';
+        } else {
+          buttonStyle = isCurrentActive
+            ? 'bg-gradient-to-r from-violet-700 to-purple-600 text-white font-bold shadow-md shadow-violet-600/20'
+            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-semibold';
+        }
 
         return (
           <button
             type="button"
             key={id}
             onClick={() => onChange(id)}
-            className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${
-              active === id
-                ? 'bg-emerald-50 text-emerald-800'
-                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-            } ${mobile ? 'flex-col gap-1 px-1 py-2 text-[10px]' : ''}`}
+            className={`relative flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-sm transition ${buttonStyle} ${mobile ? 'flex-col gap-1 px-1 py-2 text-[10px] rounded-xl' : ''
+              }`}
           >
             <div className="relative">
-              <Icon size={18} strokeWidth={active === id ? 2.4 : 1.8} />
+              <Icon size={18} strokeWidth={isCurrentActive ? 2.4 : 1.8} />
               {mobile && badgeCount > 0 && (
                 <span className={`absolute -top-1 -right-1 grid h-4 w-4 place-items-center rounded-full ${badgeColor} text-[9px] font-black text-white animate-pulse`}>
                   {badgeCount}
@@ -127,7 +141,8 @@ function PortalNav({ portal, active, onChange, mobile = false, providerRequestsC
             </div>
             <span className={mobile ? 'max-w-full truncate' : ''}>{label}</span>
             {!mobile && badgeCount > 0 && (
-              <span className={`ml-auto inline-flex items-center rounded-full ${badgeColor} px-2 py-0.5 text-[11px] font-black text-white shadow-xs animate-pulse`}>
+              <span className={`ml-auto inline-flex items-center rounded-full ${isCurrentActive ? (isProvider ? 'bg-white text-violet-700' : 'bg-white text-violet-700') : badgeColor + ' text-white'
+                } px-2 py-0.5 text-[11px] font-black shadow-xs animate-pulse`}>
                 {badgeCount}
               </span>
             )}
@@ -157,10 +172,10 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
     <header className="sticky top-0 z-30 border-b border-slate-200/75 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between gap-5 px-4 sm:px-7 xl:px-10">
         <div className="flex items-center gap-3">
-          {user && (
+          {user && portal !== 'customer' && (
             <button
               type="button"
-              className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+              className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 lg:hidden cursor-pointer"
               onClick={onToggleMenu}
               aria-label="Toggle navigation"
             >
@@ -194,6 +209,7 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
               >
                 Services
               </button>
+
               <button
                 type="button"
                 onClick={() => navigate('/register/provider')}
@@ -205,12 +221,12 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
             <button
               type="button"
               onClick={() => navigate('/cart')}
-              className="relative grid h-10 w-10 place-items-center rounded-xl text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-800"
+              className="relative grid h-10 w-10 place-items-center rounded-xl text-slate-600 transition hover:bg-violet-50 hover:text-violet-800"
               aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`}
             >
               <ShoppingBag size={19} />
               {cartCount > 0 && (
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-700 px-1 text-[10px] font-bold text-white">
+                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-violet-700 px-1 text-[10px] font-bold text-white">
                   {cartCount}
                 </span>
               )}
@@ -225,12 +241,12 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
               <button
                 type="button"
                 onClick={() => navigate('/cart')}
-                className="relative grid h-10 w-10 place-items-center rounded-xl text-slate-600 transition hover:bg-emerald-50 hover:text-emerald-800"
+                className="relative grid h-10 w-10 place-items-center rounded-xl text-slate-600 transition hover:bg-violet-50 hover:text-violet-800"
                 aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`}
               >
                 <ShoppingBag size={19} />
                 {cartCount > 0 && (
-                  <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-700 px-1 text-[10px] font-bold text-white">
+                  <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-violet-700 px-1 text-[10px] font-bold text-white">
                     {cartCount}
                   </span>
                 )}
@@ -243,14 +259,29 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
             <div className="relative group">
               <button
                 type="button"
-                className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-emerald-100 text-sm font-extrabold text-emerald-800 ring-2 ring-white"
+                className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-violet-100 text-sm font-extrabold text-violet-800 ring-2 ring-white"
                 aria-label="Account menu"
               >
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.fullName} className="h-full w-full object-cover" />
-                ) : (
-                  initials(user.fullName)
-                )}
+                {user.avatarUrl || user.providerProfile?.avatarUrl ? (
+                  <img
+                    src={resolveMediaUrl(user.avatarUrl || user.providerProfile?.avatarUrl)}
+                    alt={user.fullName}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      if (e.currentTarget.nextElementSibling) {
+                        e.currentTarget.nextElementSibling.style.display = 'block';
+                      }
+                    }}
+                  />
+                ) : null}
+                <span
+                  style={{
+                    display: user.avatarUrl || user.providerProfile?.avatarUrl ? 'none' : 'block'
+                  }}
+                >
+                  {initials(user.fullName)}
+                </span>
               </button>
               <div className="invisible absolute right-0 top-full z-40 mt-2 w-52 translate-y-1 rounded-2xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
                 <div className="border-b border-slate-100 px-3 py-2">
@@ -262,20 +293,20 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
                   onClick={() => navigate(portal === 'provider' ? '/provider/profile' : '/profile')}
                   className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
-                  <UserRound size={15} className="text-emerald-700" /> Your Profile
+                  <UserRound size={15} className="text-violet-700" /> Your Profile
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate(portal === 'provider' ? '/provider/active' : portal === 'admin' ? '/admin/bookings' : '/bookings')}
                   className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
-                  <CalendarDays size={15} className="text-emerald-700" /> {portal === 'provider' ? 'Active Jobs' : 'My Bookings'}
+                  <CalendarDays size={15} className="text-violet-700" /> {portal === 'provider' ? 'Active Jobs' : 'My Bookings'}
                 </button>
                 {!user.emailVerified && (
                   <button
                     type="button"
                     onClick={onVerifyEmail}
-                    className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                    className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 cursor-pointer"
                   >
                     <Shield size={15} /> Verify email
                   </button>
@@ -324,13 +355,23 @@ function PortalLayout({
 
       {user ? (
         <div className="mx-auto flex w-full max-w-[1440px] flex-1 gap-7 px-4 sm:px-7 xl:px-10">
+          {portal !== 'customer' && menuOpen && (
+            <div
+              className="fixed inset-0 z-10 bg-slate-900/40 backdrop-blur-xs lg:hidden"
+              onClick={() => setMenuOpen(false)}
+            />
+          )}
           <aside
-            className={`fixed inset-y-[72px] left-0 z-20 w-[260px] border-r border-slate-200 bg-white px-5 py-7 transition-transform lg:sticky lg:top-[72px] lg:block lg:h-[calc(100vh-72px)] lg:translate-x-0 lg:border-0 lg:bg-transparent lg:px-0 ${
-              menuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'
-            }`}
+            className={`${portal === 'customer'
+              ? 'hidden lg:sticky lg:top-[72px] lg:block lg:h-[calc(100vh-72px)] lg:w-[260px] lg:border-0 lg:bg-transparent lg:px-0'
+              : `fixed inset-y-[72px] left-0 z-20 w-[260px] transition-transform lg:sticky lg:top-[72px] lg:block lg:h-[calc(100vh-72px)] lg:translate-x-0 ${portal === 'provider'
+                ? 'border border-violet-900/40 bg-gradient-to-b from-[#1b0f38] via-[#241249] to-[#120726] text-white rounded-[28px] p-4 my-3 shadow-xl'
+                : 'border-r border-slate-200 bg-white px-5 py-7 lg:border-0 lg:bg-transparent lg:px-0'
+              } ${menuOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'}`
+              }`}
           >
             <div className="mb-5 px-3">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-slate-400">
+              <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${portal === 'provider' ? 'text-violet-300/60' : 'text-slate-400'}`}>
                 {portal === 'customer' ? 'YOUR SPACE' : portal === 'provider' ? 'PRO WORKSPACE' : 'MANAGE'}
               </p>
             </div>
@@ -351,26 +392,39 @@ function PortalLayout({
               providerRequestsCount={providerRequestsCount}
               customerPendingConfirmCount={customerPendingConfirmCount}
             />
-            <div className="mt-8 rounded-2xl bg-emerald-900 p-4 text-white">
-              <p className="text-xs font-bold text-emerald-200">
-                {portal === 'provider' ? 'Your next good job' : portal === 'admin' ? 'Marketplace health' : 'Make room for life'}
-              </p>
-              <p className="mt-1 text-sm font-bold leading-5">
-                {portal === 'provider'
-                  ? 'Your schedule is in your hands.'
-                  : portal === 'admin'
-                  ? 'A thoughtful service starts with thoughtful operations.'
-                  : 'Let a local expert take one thing off your list.'}
-              </p>
-              <Sparkles className="mt-4 text-emerald-300" size={18} />
-            </div>
+            {portal === 'provider' ? (
+              <div className="relative mt-8 overflow-hidden rounded-3xl border border-violet-800/40 bg-gradient-to-br from-[#1e0f3e] via-[#2c1356] to-[#0f0520] p-5 text-white shadow-xl">
+                <svg className="pointer-events-none absolute -bottom-1 inset-x-0 h-10 w-full text-violet-500/20" viewBox="0 0 100 40" fill="currentColor" preserveAspectRatio="none">
+                  <path d="M0,40 C30,40 50,15 100,25 L100,40 Z" />
+                </svg>
+                <div className="relative z-10">
+                  <div className="grid h-8 w-8 place-items-center rounded-xl bg-white/10 text-white mb-3">
+                    <Rocket size={17} className="text-amber-400" />
+                  </div>
+                  <p className="text-xs font-semibold text-violet-200">Your next good job</p>
+                  <p className="mt-1 text-sm font-extrabold leading-snug text-white">Your schedule is in your hands.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="relative mt-8 overflow-hidden rounded-3xl bg-gradient-to-br from-[#1e0f3e] via-[#2c1356] to-[#0f0520] p-5 text-white shadow-lg shadow-violet-900/10">
+                <p className="text-xs font-semibold text-violet-200">
+                  {portal === 'admin' ? 'Marketplace health' : 'Make room for life'}
+                </p>
+                <p className="mt-1 text-sm font-extrabold leading-snug">
+                  {portal === 'admin'
+                    ? 'A thoughtful service starts with thoughtful operations.'
+                    : 'Let a local expert take one thing off your list.'}
+                </p>
+                <Sparkles className="mt-4 text-violet-300" size={18} />
+              </div>
+            )}
           </aside>
 
           <main className="min-w-0 flex-1 pb-24 pt-7 lg:pb-10 lg:pt-9">
             {portal !== 'customer' && (
-              <div className="mb-7 hidden sm:block">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">{portalConfig[portal]?.title}</p>
-                <p className="mt-1 text-sm text-slate-500">{portalConfig[portal]?.subtitle}</p>
+              <div className="mb-6 hidden sm:block">
+                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-violet-700">{portalConfig[portal]?.title}</p>
+                <p className="mt-0.5 text-xs sm:text-sm text-slate-500">{portalConfig[portal]?.subtitle}</p>
               </div>
             )}
             {children}
@@ -473,7 +527,6 @@ function PortalLayout({
   );
 }
 
-// Route Guard: Only for logged-out guests (redirects logged-in users to their role portal)
 function PublicOnlyRoute({ user, children }) {
   if (user) {
     const roles = getUserRoles(user);
@@ -484,7 +537,6 @@ function PublicOnlyRoute({ user, children }) {
   return children;
 }
 
-// Route Guard: Requires authenticated user
 function RequireCustomer({ user, children }) {
   const location = useLocation();
   if (!user) {
@@ -493,7 +545,6 @@ function RequireCustomer({ user, children }) {
   return children;
 }
 
-// Route Guard: Requires provider role
 function RequireProvider({ user, children }) {
   const location = useLocation();
   if (!user) {
@@ -506,7 +557,6 @@ function RequireProvider({ user, children }) {
   return children;
 }
 
-// Route Guard: Requires admin role
 function RequireAdmin({ user, children }) {
   const location = useLocation();
   if (!user) {
@@ -686,45 +736,14 @@ function App() {
         } else if (roles.includes('customer')) {
           setCustomerPendingConfirmCount(bookings.filter((b) => b.status === 'provider_completed').length);
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     checkBadgeCounts();
     const interval = setInterval(checkBadgeCounts, 3500);
     return () => clearInterval(interval);
   }, [user]);
 
-  useEffect(() => {
-    api.get('/settings/public')
-      .then((settings) => {
-        if (!settings) return;
-        if (settings.siteTitle) {
-          document.title = settings.siteTitle;
-        } else if (settings.siteName) {
-          document.title = settings.siteName;
-        }
 
-        if (settings.faviconUrl) {
-          let link = document.querySelector("link[rel~='icon']");
-          if (!link) {
-            link = document.createElement('link');
-            link.rel = 'icon';
-            document.head.appendChild(link);
-          }
-          link.href = settings.faviconUrl;
-        }
-
-        if (settings.metaDescription) {
-          let meta = document.querySelector("meta[name='description']");
-          if (!meta) {
-            meta = document.createElement('meta');
-            meta.name = 'description';
-            document.head.appendChild(meta);
-          }
-          meta.content = settings.metaDescription;
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     let activeRequest = true;
@@ -735,7 +754,7 @@ function App() {
         if (!token) {
           try {
             token = await refreshAccessToken();
-          } catch {}
+          } catch { }
         }
         if (!token) {
           if (activeRequest) setBooting(false);
@@ -759,6 +778,15 @@ function App() {
     return () => { activeRequest = false; };
   }, []);
 
+  useEffect(() => {
+    function handleUnauthorized() {
+      setAccessToken(null);
+      setUser(null);
+    }
+    window.addEventListener('urbanmate:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('urbanmate:unauthorized', handleUnauthorized);
+  }, []);
+
   function handleAuthSuccess(nextUser) {
     setUser(nextUser);
     const roles = getUserRoles(nextUser);
@@ -777,7 +805,7 @@ function App() {
   async function handleLogout() {
     try {
       await api.post('/auth/logout');
-    } catch (_) {}
+    } catch (_) { }
     setAccessToken(null);
     setUser(null);
     setEmailVerifyOpen(false);
@@ -802,7 +830,6 @@ function App() {
   return (
     <>
       <Routes>
-        {/* Customer & Public Routes */}
         <Route path="/" element={<CustomerPage active="home" {...commonProps} />} />
         <Route path="/services" element={<CustomerPage active="services" {...commonProps} />} />
         <Route path="/service/:id" element={<CustomerPage active="service" {...commonProps} />} />
@@ -825,7 +852,6 @@ function App() {
           }
         />
 
-        {/* Authentication Routes (Redirect if logged in) */}
         <Route
           path="/login"
           element={
@@ -868,7 +894,6 @@ function App() {
           }
         />
 
-        {/* Provider Workspace Routes */}
         <Route
           path="/provider"
           element={
@@ -886,7 +911,6 @@ function App() {
           }
         />
 
-        {/* Admin Console Routes */}
         <Route
           path="/admin"
           element={
@@ -904,7 +928,6 @@ function App() {
           }
         />
 
-        {/* Fallback Catch-All */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

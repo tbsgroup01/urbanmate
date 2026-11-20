@@ -3,21 +3,35 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Bell,
+  Broom,
   CalendarDays,
   Camera,
   Check,
   Clock3,
-  IndianRupee,
+  Coins,
+  Droplets,
   FileCheck2,
+  FileText,
+  Hourglass,
+  IndianRupee,
+  Layers,
+  MapPin,
+  Paintbrush,
+  Phone,
   Plus,
   Save,
   Search,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Trash2,
+  Tv,
   UploadCloud,
+  UserRound,
   Wallet,
-  Wrench
+  Wrench,
+  X,
+  Zap
 } from 'lucide-react';
 import {
   Badge,
@@ -34,13 +48,13 @@ import {
   currency
 } from '../components/ui';
 import EmailVerification from '../components/EmailVerification';
-import { api, getErrorMessage } from '../lib/api';
+import { api, getErrorMessage, resolveMediaUrl } from '../lib/api';
 
 const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const activeStatuses = ['confirmed', 'in_progress', 'provider_completed'];
 
 function StatusBadge({ status }) {
-  const tone = status === 'completed' ? 'green'
+  const tone = status === 'completed' ? 'violet'
     : ['cancelled', 'rejected'].includes(status) ? 'rose'
       : status === 'assigned' ? 'amber' : 'blue';
   return <Badge tone={tone}>{status?.replaceAll('_', ' ')}</Badge>;
@@ -81,6 +95,7 @@ function Overview({ user, onNavigate }) {
 
   const requests = bookings.filter((booking) => booking.status === 'assigned');
   const active = bookings.filter((booking) => activeStatuses.includes(booking.status));
+  const completed = bookings.filter((booking) => booking.status === 'completed');
   const currencyEntries = Object.entries(earnings?.currencies || {});
   const totalEarnings = currencyEntries.reduce(
     (sum, [, value]) => sum + Number(value.pending || 0) + Number(value.payable || 0) + Number(value.paid || 0),
@@ -91,73 +106,228 @@ function Overview({ user, onNavigate }) {
   if (loading) return <PageLoader label="Loading your work overview…" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
+  const firstName = user?.fullName?.split(' ')[0] || 'Jane';
+  const avatarInitials = user?.fullName?.split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'JP';
+
+  const statCards = [
+    {
+      title: 'New requests',
+      value: requests.length,
+      sub: 'Need your response',
+      icon: CalendarDays,
+      iconBg: 'bg-[#ffedd5] text-[#ea580c]',
+      arrowColor: 'text-[#f97316]',
+      border: 'border-amber-100/80',
+      bg: 'bg-gradient-to-br from-white via-white to-amber-50/30',
+      wave: 'text-[#fed7aa]/50',
+      tab: 'requests'
+    },
+    {
+      title: 'Active jobs',
+      value: active.length,
+      sub: 'Confirmed or underway',
+      icon: Wrench,
+      iconBg: 'bg-[#e0f2fe] text-[#0284c7]',
+      arrowColor: 'text-[#0ea5e9]',
+      border: 'border-sky-100/80',
+      bg: 'bg-gradient-to-br from-white via-white to-sky-50/30',
+      wave: 'text-[#bae6fd]/50',
+      tab: 'active'
+    },
+    {
+      title: 'Total earnings',
+      value: currency(totalEarnings),
+      sub: payableTotal > 0 ? `${currency(payableTotal)} ready to payout` : 'Across all jobs',
+      icon: Wallet,
+      iconBg: 'bg-[#ede9fe] text-[#7c3aed]',
+      arrowColor: 'text-[#8b5cf6]',
+      border: 'border-violet-100/80',
+      bg: 'bg-gradient-to-br from-white via-white to-violet-50/30',
+      wave: 'text-[#ddd6fe]/50',
+      tab: 'earnings'
+    },
+    {
+      title: 'Jobs completed',
+      value: completed.length,
+      sub: 'Service history',
+      icon: BadgeCheck,
+      iconBg: 'bg-[#f3e8ff] text-[#9333ea]',
+      arrowColor: 'text-[#a855f7]',
+      border: 'border-purple-100/80',
+      bg: 'bg-gradient-to-br from-white via-white to-purple-50/30',
+      wave: 'text-[#e9d5ff]/50',
+      tab: 'history'
+    }
+  ];
+
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
+      {/* Top Profile / Work at a glance row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          {user.avatarUrl ? (
-            <img
-              src={user.avatarUrl}
-              alt={user.fullName}
-              className="h-16 w-16 shrink-0 rounded-2xl object-cover border-2 border-emerald-300 shadow-sm"
-            />
-          ) : (
-            <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-xl font-black text-emerald-800 border border-emerald-200">
-              {user.fullName?.split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'P'}
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-[#ede9fe] text-lg font-black text-[#6d28d9] shadow-xs ring-1 ring-violet-200/60 overflow-hidden">
+            {user?.avatarUrl ? (
+              <img
+                src={resolveMediaUrl(user.avatarUrl)}
+                alt={user.fullName}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  if (e.currentTarget.nextElementSibling) {
+                    e.currentTarget.nextElementSibling.style.display = 'block';
+                  }
+                }}
+              />
+            ) : null}
+            <span style={{ display: user?.avatarUrl ? 'none' : 'block' }}>
+              {avatarInitials}
             </span>
-          )}
+          </div>
           <div>
-            <SectionHeading
-              eyebrow="Your work at a glance"
-              title={`Good to see you, ${user.fullName?.split(' ')[0] || 'partner'}.`}
-              description="Here’s what’s happening with your Urbanmate work today."
-            />
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">YOUR WORK AT A GLANCE</p>
+            <h1 className="mt-0.5 text-2xl font-black tracking-tight text-slate-900 sm:text-[28px]">
+              Good to see you, {firstName}.
+            </h1>
+            <p className="mt-1 text-xs sm:text-sm font-medium text-slate-500">
+              Here’s what’s happening with your Urbanmate work today.
+            </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 sm:self-center">
-          <Button variant="secondary" size="sm" onClick={() => onNavigate('services')}>
-            <Wrench size={14} /> My services
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => onNavigate('profile')}>
-            <Camera size={14} /> Photo & profile
-          </Button>
+
+        <div className="flex items-center gap-2.5 sm:self-center">
+          <button
+            type="button"
+            onClick={() => onNavigate('services')}
+            className="flex items-center gap-2 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-800 shadow-xs hover:bg-slate-50 transition cursor-pointer"
+          >
+            <Wrench size={14} className="text-slate-700" /> My services
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate('profile')}
+            className="flex items-center gap-2 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-xs font-bold text-slate-800 shadow-xs hover:bg-slate-50 transition cursor-pointer"
+          >
+            <Camera size={14} className="text-slate-700" /> Photo & profile
+          </button>
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { title: 'New requests', value: requests.length, sub: 'Need your response', icon: CalendarDays, color: 'bg-amber-50 text-amber-700', tab: 'requests' },
-          { title: 'Active jobs', value: active.length, sub: 'Confirmed or underway', icon: Wrench, color: 'bg-sky-50 text-sky-700', tab: 'active' },
-          { title: 'Total earnings', value: currency(totalEarnings), sub: payableTotal > 0 ? `${currency(payableTotal)} ready to payout` : 'Across all jobs', icon: Wallet, color: 'bg-emerald-50 text-emerald-700', tab: 'earnings' },
-          { title: 'Jobs completed', value: bookings.filter((booking) => booking.status === 'completed').length, sub: 'Service history', icon: BadgeCheck, color: 'bg-violet-50 text-violet-700', tab: 'history' }
-        ].map(({ title, value, sub, icon: Icon, color, tab }) => (
-          <Card key={title} className="p-5">
-            <div className="flex items-start justify-between"><span className={`grid h-10 w-10 place-items-center rounded-xl ${color}`}><Icon size={19} /></span><button type="button" onClick={() => onNavigate(tab)} className="text-slate-400 hover:text-emerald-700"><ArrowUpRight size={17} /></button></div>
-            <p className="mt-4 text-2xl font-black tracking-tight text-slate-900">{value}</p>
-            <p className="mt-1 text-sm font-bold text-slate-700">{title}</p>
-            <p className="mt-1 text-xs text-slate-400">{sub}</p>
-          </Card>
+
+      {/* 4 Stat Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {statCards.map(({ title, value, sub, icon: Icon, iconBg, arrowColor, border, bg, wave, tab }) => (
+          <div
+            key={title}
+            onClick={() => onNavigate(tab)}
+            className={`group relative flex flex-col justify-between overflow-hidden rounded-[26px] border ${border} ${bg} p-5 shadow-[0_4px_24px_-6px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer`}
+          >
+            {/* Smooth SVG bottom wave */}
+            <svg
+              className={`pointer-events-none absolute -bottom-0.5 -right-0.5 h-20 w-36 ${wave} transition-transform duration-300 group-hover:scale-105`}
+              viewBox="0 0 144 80"
+              fill="currentColor"
+              preserveAspectRatio="none"
+            >
+              <path d="M0,80 C35,80 55,50 85,42 C115,34 128,15 144,0 L144,80 Z" />
+            </svg>
+
+            <div className="relative z-10 flex items-start justify-between">
+              <span className={`grid h-10 w-10 place-items-center rounded-2xl ${iconBg} shadow-xs`}>
+                <Icon size={18} strokeWidth={2.2} />
+              </span>
+              <span className={`${arrowColor} transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5`}>
+                <ArrowUpRight size={18} strokeWidth={2.4} />
+              </span>
+            </div>
+
+            <div className="relative z-10 mt-5">
+              <p className="text-3xl font-black tracking-tight text-slate-900">{value}</p>
+              <p className="mt-1 text-sm font-bold text-slate-800">{title}</p>
+              <p className="mt-0.5 text-xs font-medium text-slate-400">{sub}</p>
+            </div>
+          </div>
         ))}
       </div>
-      <div className="grid gap-5 xl:grid-cols-[1.4fr_0.8fr]">
-        <Card className="p-5 sm:p-6">
-          <div className="mb-4 flex items-center justify-between"><div><p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-emerald-700">Next up</p><h2 className="mt-1 text-lg font-extrabold text-slate-900">Your latest requests</h2></div><button type="button" onClick={() => onNavigate('requests')} className="text-xs font-bold text-emerald-700">See all →</button></div>
-          {requests.length ? (
-            <div className="divide-y divide-slate-100">
-              {requests.slice(0, 3).map((booking) => (
-                <div key={booking.id} className="flex items-center justify-between gap-3 py-3">
-                  <div><p className="text-sm font-bold text-slate-800">{booking.serviceNameSnapshot || booking.service?.name}</p><p className="mt-1 text-xs text-slate-400">{new Date(booking.scheduledStart).toLocaleString()}</p></div>
-                  <StatusBadge status={booking.status} />
-                </div>
-              ))}
+
+      {/* Bottom Row: Latest requests (Left) & Verification trust card (Right) */}
+      <div className="grid gap-5 lg:grid-cols-12 items-stretch">
+        {/* Left: Your latest requests */}
+        <div className="relative flex flex-col justify-between overflow-hidden rounded-[28px] border border-slate-100 bg-white p-6 sm:p-7 shadow-[0_4px_24px_-6px_rgba(0,0,0,0.04)] lg:col-span-8">
+          {/* Subtle lavender bottom wave */}
+          <svg
+            className="pointer-events-none absolute -bottom-0.5 inset-x-0 h-16 w-full text-indigo-50/40"
+            viewBox="0 0 600 60"
+            fill="currentColor"
+            preserveAspectRatio="none"
+          >
+            <path d="M0,60 C150,60 250,22 400,32 C500,40 550,55 600,60 L600,60 L0,60 Z" />
+          </svg>
+
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">NEXT UP</p>
+                <h2 className="mt-1 text-xl font-extrabold tracking-tight text-slate-900">Your latest requests</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigate('requests')}
+                className="text-xs font-bold text-violet-700 hover:text-violet-800 transition cursor-pointer"
+              >
+                See all →
+              </button>
             </div>
-          ) : <p className="py-8 text-center text-sm text-slate-400">You’re all caught up. New requests will show here.</p>}
-        </Card>
-        <Card className="bg-[#173f32] p-6 text-white">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-emerald-200"><ShieldCheck size={21} /></span>
-          <h2 className="mt-4 text-lg font-extrabold">Your profile is your first impression.</h2>
-          <p className="mt-2 text-sm leading-6 text-emerald-50/70">Keep your services, availability, and verification documents up to date to build trust with customers.</p>
-          <Button variant="secondary" size="sm" className="mt-5" onClick={() => onNavigate('profile')}>Review profile <ArrowUpRight size={14} /></Button>
-        </Card>
+
+            {requests.length ? (
+              <div className="mt-4 divide-y divide-slate-100">
+                {requests.slice(0, 3).map((booking) => (
+                  <div key={booking.id} className="flex items-center justify-between gap-3 py-3.5">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{booking.serviceNameSnapshot || booking.service?.name}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">{new Date(booking.scheduledStart).toLocaleString()}</p>
+                    </div>
+                    <StatusBadge status={booking.status} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex min-h-[160px] items-center justify-center py-12 text-center">
+                <p className="text-sm font-medium text-slate-400">You’re all caught up. New requests will show here.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Verification documents / Trust Card */}
+        <div className="relative flex flex-col justify-between overflow-hidden rounded-[28px] border border-slate-100 bg-white p-6 sm:p-7 shadow-[0_4px_24px_-6px_rgba(0,0,0,0.04)] lg:col-span-4">
+          {/* Subtle mint bottom-right wave */}
+          <svg
+            className="pointer-events-none absolute -bottom-0.5 -right-0.5 h-24 w-44 text-violet-100/40"
+            viewBox="0 0 160 80"
+            fill="currentColor"
+            preserveAspectRatio="none"
+          >
+            <path d="M0,80 C50,80 80,42 120,32 C140,26 155,10 160,0 L160,80 Z" />
+          </svg>
+
+          <div className="relative z-10">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-50 text-violet-600 border border-violet-100/80 shadow-xs">
+              <ShieldCheck size={20} strokeWidth={2.2} />
+            </span>
+            <p className="mt-5 text-sm font-medium leading-relaxed text-slate-500">
+              Keep your services, availability, and verification documents up to date to build trust with customers.
+            </p>
+          </div>
+
+          <div className="relative z-10 mt-8">
+            <button
+              type="button"
+              onClick={() => onNavigate('profile')}
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/90 bg-white px-5 py-2.5 text-xs font-bold text-slate-800 shadow-xs hover:bg-slate-50 transition cursor-pointer"
+            >
+              Review profile <ArrowUpRight size={14} className="text-slate-600" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -215,63 +385,199 @@ function BookingList({ mode }) {
     active: ['Active jobs', 'The work you have accepted or started.'],
     history: ['Job history', 'A record of your completed and closed jobs.']
   };
-  return (
-    <div>
-      <SectionHeading eyebrow="My bookings" title={headings[mode][0]} description={headings[mode][1]} />
-      {loading ? <PageLoader /> : error ? <ErrorState message={error} onRetry={load} /> : visible.length ? (
-        <div className="space-y-4">
-          {visible.map((booking) => (
-            <Card key={booking.id} className="p-5 sm:p-6 border border-slate-200/90 shadow-sm transition hover:shadow-md">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="flex items-start gap-4">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 shadow-xs border border-emerald-100">
-                    <CalendarDays size={20} />
-                  </span>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-black text-slate-900 text-base sm:text-lg">{booking.serviceNameSnapshot || booking.service?.name}</h3>
-                      <StatusBadge status={booking.status} />
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500 font-medium">
-                      Booking {booking.bookingNumber} · <span className="font-bold text-slate-700">{new Date(booking.scheduledStart).toLocaleString()}</span>
-                    </p>
-                    <p className="mt-1.5 text-sm font-extrabold text-slate-900">
-                      {currency(booking.total, booking.currency || 'INR')} <span className="font-normal text-xs text-slate-400">· Service earning</span>
-                    </p>
 
-                    {/* Customer & Location Details Card */}
-                    <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-slate-100 bg-[#f8faf9] px-3.5 py-2.5 text-xs text-slate-600">
-                      <span className="font-bold text-slate-800">👤 {booking.customer?.fullName || 'Customer'}</span>
-                      {booking.customer?.phone && <span className="font-semibold text-emerald-800">📞 {booking.customer.phone}</span>}
-                      {booking.address && (
-                        <span className="font-medium text-slate-600">
-                          📍 {booking.address.line1}{booking.address.city ? `, ${booking.address.city}` : ''} {booking.address.postalCode || ''}
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">MY BOOKINGS</p>
+        <h1 className="mt-0.5 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+          {headings[mode][0]}
+        </h1>
+        <p className="mt-1 text-xs sm:text-sm font-medium text-slate-500">
+          {headings[mode][1]}
+        </p>
+      </div>
+
+      {loading ? (
+        <PageLoader label="Loading jobs…" />
+      ) : error ? (
+        <ErrorState message={error} onRetry={load} />
+      ) : visible.length ? (
+        <div className="space-y-4">
+          {visible.map((booking) => {
+            const formattedDate = new Date(booking.scheduledStart).toLocaleString('en-US', {
+              year: 'numeric',
+              month: 'numeric',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            });
+
+            const isHistory = mode === 'history';
+            const isCompleted = booking.status === 'completed';
+            const isCancelled = ['cancelled', 'rejected'].includes(booking.status);
+
+            const waveColor = isHistory
+              ? isCompleted
+                ? 'text-violet-100/50'
+                : 'text-rose-100/50'
+              : 'text-purple-100/50';
+
+            return (
+              <div
+                key={booking.id}
+                className="relative overflow-hidden rounded-[28px] border border-slate-100 bg-white p-6 sm:p-7 shadow-[0_4px_24px_-6px_rgba(0,0,0,0.04)] transition-all hover:shadow-md"
+              >
+                {/* Soft colored curved bottom wave */}
+                <svg
+                  className={`pointer-events-none absolute -bottom-1 -right-1 h-24 w-64 ${waveColor}`}
+                  viewBox="0 0 240 80"
+                  fill="currentColor"
+                  preserveAspectRatio="none"
+                >
+                  <path d="M0,80 C60,80 100,35 160,30 C200,26 220,10 240,0 L240,80 Z" />
+                </svg>
+
+                <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-start gap-4">
+                    {/* Purple Calendar Icon box */}
+                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-purple-100 text-purple-700 shadow-xs">
+                      <CalendarDays size={22} strokeWidth={2.2} />
+                    </div>
+
+                    <div>
+                      {/* Service Title and Status Badge */}
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <h3 className="text-base sm:text-lg font-black tracking-tight text-slate-900">
+                          {booking.serviceNameSnapshot || booking.service?.name}
+                        </h3>
+                        {isHistory ? (
+                          isCompleted ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 border border-violet-200/80 px-3 py-0.5 text-xs font-bold text-violet-700 ml-1">
+                              <Check size={12} strokeWidth={3} /> Completed
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200/80 px-3 py-0.5 text-xs font-bold text-rose-700 ml-1">
+                              <X size={12} strokeWidth={3} /> Cancelled
+                            </span>
+                          )
+                        ) : (
+                          <span className="rounded-full bg-purple-100 px-3 py-0.5 text-xs font-bold text-purple-800 capitalize">
+                            {booking.status === 'provider_completed' ? 'Provider Completed' : booking.status.replaceAll('_', ' ')}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Booking Code and Date */}
+                      <p className="mt-1 text-xs font-medium text-slate-500">
+                        Booking {booking.bookingNumber} · <span className="font-semibold text-slate-700">{formattedDate}</span>
+                      </p>
+
+                      {/* Earning */}
+                      <p className="mt-1.5 text-sm font-black text-slate-900">
+                        {currency(booking.total, booking.currency || 'INR')}{' '}
+                        <span className="text-xs font-normal text-slate-400">· Service earning</span>
+                      </p>
+
+                      {/* Customer info bar pill */}
+                      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-slate-100 bg-[#f8f9fa] px-4 py-2.5 text-xs text-slate-700 shadow-2xs">
+                        <span className="flex items-center gap-1.5 font-bold text-slate-800">
+                          <UserRound size={14} className="text-slate-500" />
+                          {booking.customer?.fullName || 'Customer'}
                         </span>
-                      )}
+                        {booking.customer?.phone && (
+                          <a href={`tel:${booking.customer.phone}`} className="flex items-center gap-1.5 font-bold text-purple-700 hover:underline">
+                            <Phone size={14} className="text-purple-600" />
+                            {booking.customer.phone}
+                          </a>
+                        )}
+                        {booking.address && (
+                          <span className="flex items-center gap-1.5 font-medium text-slate-600">
+                            <MapPin size={14} className="text-rose-500" />
+                            {booking.address.line1}{booking.address.city ? `, ${booking.address.city}` : ''} {booking.address.postalCode || ''}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex flex-wrap gap-2.5 sm:self-center shrink-0">
-                  {booking.status === 'assigned' && (
-                    <>
-                      <Button size="sm" disabled={busy === booking.id} onClick={() => action(booking.id, 'accept')}>
-                        <Check size={14} strokeWidth={2.5} /> Accept Request
-                      </Button>
-                      <Button size="sm" variant="danger" disabled={busy === booking.id} onClick={() => action(booking.id, 'reject', { reason: 'Unable to take this booking' })}>
-                        Decline
-                      </Button>
-                    </>
-                  )}
-                  {booking.status === 'confirmed' && <Button size="sm" disabled={busy === booking.id} onClick={() => action(booking.id, 'start')}>Start job</Button>}
-                  {booking.status === 'in_progress' && <Button size="sm" disabled={busy === booking.id} onClick={() => action(booking.id, 'complete')}>Mark complete</Button>}
-                  {booking.status === 'provider_completed' && <span className="self-center text-xs font-semibold text-amber-700">Waiting for customer confirmation</span>}
+                  {/* Action or Status Pill on right */}
+                  <div className="flex flex-wrap items-center gap-2.5 sm:self-center shrink-0">
+                    {isHistory ? (
+                      isCompleted ? (
+                        <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-violet-500 text-violet-600 bg-white shadow-xs">
+                          <Check size={24} strokeWidth={2.5} />
+                        </div>
+                      ) : (
+                        <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-rose-500 text-rose-600 bg-white shadow-xs">
+                          <X size={24} strokeWidth={2.5} />
+                        </div>
+                      )
+                    ) : (
+                      <>
+                        {booking.status === 'assigned' && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={busy === booking.id}
+                              onClick={() => action(booking.id, 'accept')}
+                              className="flex items-center gap-1.5 rounded-2xl bg-violet-700 hover:bg-violet-800 text-white px-4 py-2 text-xs font-bold shadow-xs transition disabled:opacity-60 cursor-pointer"
+                            >
+                              <Check size={14} strokeWidth={2.5} /> Accept Request
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy === booking.id}
+                              onClick={() => action(booking.id, 'reject', { reason: 'Unable to take this booking' })}
+                              className="rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 px-4 py-2 text-xs font-bold transition disabled:opacity-60 cursor-pointer"
+                            >
+                              Decline
+                            </button>
+                          </>
+                        )}
+                        {booking.status === 'confirmed' && (
+                          <button
+                            type="button"
+                            disabled={busy === booking.id}
+                            onClick={() => action(booking.id, 'start')}
+                            className="rounded-2xl bg-violet-700 hover:bg-violet-800 text-white px-5 py-2.5 text-xs font-bold shadow-xs transition disabled:opacity-60 cursor-pointer"
+                          >
+                            Start job
+                          </button>
+                        )}
+                        {booking.status === 'in_progress' && (
+                          <button
+                            type="button"
+                            disabled={busy === booking.id}
+                            onClick={() => action(booking.id, 'complete')}
+                            className="rounded-2xl bg-violet-700 hover:bg-violet-800 text-white px-5 py-2.5 text-xs font-bold shadow-xs transition disabled:opacity-60 cursor-pointer"
+                          >
+                            Mark complete
+                          </button>
+                        )}
+                        {booking.status === 'provider_completed' && (
+                          <span className="inline-flex items-center gap-2 rounded-full border border-amber-200/90 bg-amber-50/90 px-4 py-2 text-xs font-bold text-amber-800 shadow-2xs">
+                            <Clock3 size={15} className="text-amber-600" />
+                            Waiting for customer confirmation
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-            </Card>
-          ))}
+            );
+          })}
         </div>
-      ) : <EmptyState icon={mode === 'requests' ? Bell : CalendarDays} title={mode === 'requests' ? 'No new requests' : mode === 'active' ? 'No active jobs' : 'Your history is clear'} description={mode === 'requests' ? 'When a customer books your services, you can respond here.' : 'Your bookings will appear here as they move through your schedule.'} />}
+      ) : (
+        <EmptyState
+          icon={mode === 'requests' ? Bell : CalendarDays}
+          title={mode === 'requests' ? 'No new requests' : mode === 'active' ? 'No active jobs' : 'Your history is clear'}
+          description={mode === 'requests' ? 'When a customer books your services, you can respond here.' : 'Your bookings will appear here as they move through your schedule.'}
+        />
+      )}
     </div>
   );
 }
@@ -344,17 +650,61 @@ function AvailabilityEditor() {
             <Field label="Until"><Input type="time" value={window.endTime} onChange={(event) => change(index, 'endTime', event.target.value)} /></Field>
             <Field label="Timezone"><Input value={window.timezone} onChange={(event) => change(index, 'timezone', event.target.value)} placeholder="Asia/Kolkata" /></Field>
             <div className="flex items-center gap-3 sm:mt-5">
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500"><input type="checkbox" checked={window.isAvailable} onChange={(event) => change(index, 'isAvailable', event.target.checked)} className="accent-emerald-700" /> Available</label>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500"><input type="checkbox" checked={window.isAvailable} onChange={(event) => change(index, 'isAvailable', event.target.checked)} className="accent-violet-700" /> Available</label>
               <button type="button" onClick={() => setWindows((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="text-xs font-bold text-rose-600 hover:text-rose-800">Remove</button>
             </div>
           </div>
         )) : <EmptyState icon={Clock3} title="Set your working hours" description="Add one or more weekly time windows so eligible customers can find you." />}
       </Card>
       {error && <p role="alert" className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p>}
-      {saved && <p role="status" className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Your availability has been updated.</p>}
+      {saved && <p role="status" className="mt-4 rounded-xl bg-violet-50 px-4 py-3 text-sm text-violet-800">Your availability has been updated.</p>}
       <div className="mt-4 flex justify-end"><Button onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save availability'} <Save size={15} /></Button></div>
     </div>
   );
+}
+
+function getServiceTheme(service) {
+  const cat = (service.category?.name || service.name || '').toLowerCase();
+  if (cat.includes('paint') || cat.includes('wall')) {
+    return {
+      icon: Paintbrush,
+      badge: 'bg-orange-50 text-orange-700 border-orange-100',
+      wave: 'text-orange-100/50'
+    };
+  }
+  if (cat.includes('electr')) {
+    return {
+      icon: Zap,
+      badge: 'bg-blue-50 text-blue-700 border-blue-100',
+      wave: 'text-blue-100/50'
+    };
+  }
+  if (cat.includes('plumb')) {
+    return {
+      icon: Droplets,
+      badge: 'bg-violet-50 text-violet-700 border-violet-100',
+      wave: 'text-violet-100/50'
+    };
+  }
+  if (cat.includes('ac') || cat.includes('appliance')) {
+    return {
+      icon: Tv,
+      badge: 'bg-sky-50 text-sky-700 border-sky-100',
+      wave: 'text-sky-100/50'
+    };
+  }
+  if (cat.includes('clean') || cat.includes('home')) {
+    return {
+      icon: Sparkles,
+      badge: 'bg-purple-50 text-purple-700 border-purple-100',
+      wave: 'text-purple-100/50'
+    };
+  }
+  return {
+    icon: Wrench,
+    badge: 'bg-violet-50 text-violet-700 border-violet-100',
+    wave: 'text-violet-100/50'
+  };
 }
 
 function ProviderServices() {
@@ -481,142 +831,182 @@ function ProviderServices() {
 
   return (
     <div className="space-y-6">
-      <SectionHeading
-        eyebrow="Marketplace offerings"
-        title="My services & rates"
-        description="Select the services you provide to customers. You can use standard platform pricing or set your own competitive custom rate."
-        action={
-          <Button onClick={save} disabled={busy}>
-            {busy ? 'Saving changes…' : 'Save services'} <Save size={15} />
-          </Button>
-        }
-      />
+      {/* Header Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-700">MARKETPLACE OFFERINGS</p>
+          <h1 className="mt-0.5 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+            My services & rates
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm font-medium text-slate-500">
+            Select the services you provide to customers. You can use standard platform pricing or set your own competitive custom rate.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={busy}
+          className="flex items-center gap-2 rounded-2xl bg-[#5b21b6] hover:bg-[#4c1d95] text-white px-5 py-2.5 text-xs font-bold shadow-sm transition disabled:opacity-60 cursor-pointer self-start sm:self-center shrink-0"
+        >
+          <Plus size={15} strokeWidth={2.5} />
+          {busy ? 'Saving…' : 'Save services'}
+        </button>
+      </div>
 
       {/* Top Banner & Stats */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50/50 p-4 sm:p-5">
-        <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white shadow-sm">
-            <Wrench size={22} />
+      <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 overflow-hidden rounded-[24px] border border-violet-200/80 bg-gradient-to-r from-violet-50 via-purple-50 to-violet-50 p-4 sm:p-5 shadow-xs">
+        <svg className="pointer-events-none absolute -bottom-1 inset-x-0 h-12 w-full text-violet-100/50" viewBox="0 0 600 50" fill="currentColor" preserveAspectRatio="none">
+          <path d="M0,50 C150,50 250,15 400,25 C500,32 550,45 600,50 L600,50 L0,50 Z" />
+        </svg>
+
+        <div className="relative z-10 flex items-center gap-3.5">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#8b5cf6] text-white shadow-xs">
+            <Wrench size={20} strokeWidth={2.4} />
           </div>
           <div>
-            <h3 className="font-extrabold text-slate-900">
+            <h3 className="text-base sm:text-lg font-black text-slate-900">
               {selectedCount} of {catalogServices.length} services selected
             </h3>
-            <p className="text-xs text-slate-600">
+            <p className="mt-0.5 text-xs font-medium text-slate-500">
               Admins and customers will only see the services you enable below.
             </p>
           </div>
         </div>
-        <Button onClick={save} disabled={busy} size="sm">
-          {busy ? 'Saving…' : 'Save services'} <Save size={14} />
-        </Button>
+
+        <div className="relative z-10">
+          <button
+            type="button"
+            onClick={save}
+            disabled={busy}
+            className="rounded-2xl bg-[#6d28d9] hover:bg-[#5b21b6] text-white px-6 py-2.5 text-xs font-bold shadow-sm transition disabled:opacity-60 cursor-pointer"
+          >
+            {busy ? 'Saving…' : 'Save services'}
+          </button>
+        </div>
       </div>
 
-      {message && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">{message}</p>}
-      {error && <p role="alert" className="rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-700">{error}</p>}
+      {message && <p role="status" className="rounded-2xl bg-violet-50 border border-violet-200 p-4 text-xs font-bold text-violet-800">{message}</p>}
+      {error && <p role="alert" className="rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs font-bold text-rose-700">{error}</p>}
 
-      {/* Filters */}
+      {/* Search & Category Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <Input
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+          <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search services by title or description…"
-            className="pl-10"
+            className="w-full rounded-[20px] border border-slate-200/90 bg-white py-3 pl-11 pr-4 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 shadow-xs focus:border-violet-500 focus:outline-none"
           />
         </div>
         {categories.length > 0 && (
-          <Select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full sm:w-56"
-          >
-            <option value="all">All categories ({catalogServices.length})</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
+          <div className="relative">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full sm:w-60 rounded-[20px] border border-slate-200/90 bg-white py-3 px-4 text-xs sm:text-sm font-bold text-slate-800 shadow-xs focus:border-violet-500 focus:outline-none cursor-pointer"
+            >
+              <option value="all">All categories ({catalogServices.length})</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
         )}
       </div>
 
-      {/* Service Cards Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {/* Services Grid */}
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {filteredServices.map((service) => {
           const isSelected = Boolean(selectedServices[service.id]);
           const config = selectedServices[service.id] || { customPrice: '', isActive: true };
+          const theme = getServiceTheme(service);
+          const CategoryIcon = theme.icon;
 
           return (
-            <Card
+            <div
               key={service.id}
-              className={`p-5 transition-all border-2 ${
-                isSelected
-                  ? 'border-emerald-600 bg-emerald-50/20 shadow-sm'
-                  : 'border-slate-100 hover:border-slate-300'
+              className={`relative flex flex-col justify-between overflow-hidden rounded-[26px] border bg-white p-5 shadow-[0_4px_24px_-6px_rgba(0,0,0,0.04)] transition-all ${
+                isSelected ? 'border-slate-200/90 ring-1 ring-slate-100' : 'border-slate-100 opacity-75'
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  {service.category?.name && (
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
-                      {service.category.name}
-                    </span>
-                  )}
-                  <h4 className="font-extrabold text-slate-900 line-clamp-1">{service.name}</h4>
-                  <p className="mt-1 text-xs text-slate-500 line-clamp-2">{service.description || 'Professional service by certified experts.'}</p>
+              {/* Top-right subtle pastel wave */}
+              <svg
+                className={`pointer-events-none absolute -top-1 -right-1 h-20 w-36 ${theme.wave}`}
+                viewBox="0 0 144 80"
+                fill="currentColor"
+                preserveAspectRatio="none"
+              >
+                <path d="M0,0 C35,0 55,30 85,38 C115,46 128,65 144,80 L144,0 Z" />
+              </svg>
+
+              <div className="relative z-10">
+                {/* Category badge & checkbox */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${theme.badge}`}>
+                    <CategoryIcon size={12} strokeWidth={2.4} />
+                    {service.category?.name || 'SERVICE'}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => toggleService(service.id)}
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition shadow-xs cursor-pointer ${
+                      isSelected ? 'bg-blue-600 text-white' : 'border-2 border-slate-300 bg-white hover:border-slate-400'
+                    }`}
+                    aria-label={isSelected ? 'Deselect service' : 'Select service'}
+                  >
+                    {isSelected && <Check size={13} strokeWidth={3} />}
+                  </button>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => toggleService(service.id)}
-                  className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                />
+
+                {/* Service Name */}
+                <h4 className="mt-3 text-base font-extrabold text-slate-900 tracking-tight line-clamp-1" title={service.name}>
+                  {service.name}
+                </h4>
+
+                {/* Description */}
+                <p className="mt-1 text-xs text-slate-500 font-medium line-clamp-2 min-h-[32px] leading-relaxed">
+                  {service.description || 'Professional doorstep service by verified specialists.'}
+                </p>
+
+                {/* Standard platform rate */}
+                <div className="mt-4 flex items-center justify-between text-xs text-slate-500 font-medium">
+                  <span>Standard platform rate</span>
+                  <span className="font-extrabold text-slate-900 text-sm">{currency(service.basePrice, 'INR')}</span>
+                </div>
+
+                {/* Your Price Input */}
+                <div className="mt-3 flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700">Your price (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder={String(service.basePrice || '')}
+                    value={config.customPrice !== '' ? config.customPrice : (service.basePrice != null ? service.basePrice : '')}
+                    onChange={(e) => updatePrice(service.id, e.target.value)}
+                    className="w-28 rounded-xl border border-slate-200/90 bg-white px-3 py-1.5 text-right text-sm font-bold text-slate-800 shadow-2xs focus:border-violet-500 focus:outline-none"
+                  />
+                </div>
               </div>
 
-              <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
-                <span>Standard platform rate</span>
-                <span className="font-bold text-slate-900">{currency(service.basePrice, 'INR')}</span>
-              </div>
-
-              {isSelected ? (
-                <div className="mt-3 space-y-2 rounded-xl bg-white p-3 border border-emerald-100 shadow-2xs">
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="text-xs font-bold text-slate-700">Your price (₹)</label>
-                    <div className="w-28">
-                      <Input
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder={`₹${service.basePrice}`}
-                        value={config.customPrice}
-                        onChange={(e) => updatePrice(service.id, e.target.value)}
-                        className="py-1 px-2 text-xs"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-xs text-slate-600">Active status</span>
-                    <button
-                      type="button"
-                      onClick={() => updateActive(service.id, !config.isActive)}
-                      className={`text-xs font-bold px-2.5 py-1 rounded-lg transition ${
-                        config.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {config.isActive ? 'Active' : 'Paused'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              {/* Active status */}
+              <div className="relative z-10 mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                <span className="text-xs font-semibold text-slate-600">Active status</span>
                 <button
                   type="button"
-                  onClick={() => toggleService(service.id)}
-                  className="mt-3 w-full rounded-xl border border-dashed border-slate-300 py-2 text-xs font-bold text-slate-600 hover:border-emerald-500 hover:bg-emerald-50/40 hover:text-emerald-800 transition cursor-pointer"
+                  onClick={() => updateActive(service.id, !config.isActive)}
+                  className={`rounded-xl px-3 py-1 text-xs font-bold transition shadow-2xs cursor-pointer ${
+                    isSelected && config.isActive !== false
+                      ? 'bg-[#ede9fe] text-[#6d28d9]'
+                      : 'bg-slate-100 text-slate-400'
+                  }`}
                 >
-                  + Offer this service
+                  {isSelected && config.isActive !== false ? 'Active' : 'Inactive'}
                 </button>
-              )}
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>
@@ -650,40 +1040,92 @@ function Earnings() {
 
   return (
     <div className="space-y-6">
-      <SectionHeading
-        eyebrow="Your business"
-        title="Earnings & payouts"
-        description="A clear breakdown of booking earnings, available balances, and settlement ledger."
-      />
+      <div>
+        <div className="mb-2">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-700">PROVIDER WORKSPACE</p>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">Your jobs, schedule, and business — all in one place.</p>
+        </div>
+        <div className="mt-5">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-purple-700">YOUR BUSINESS</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-black tracking-tight text-slate-900">Earnings & payouts</h1>
+          <p className="mt-1 text-xs sm:text-sm font-medium text-slate-500">
+            A clear breakdown of booking earnings, available balances, and settlement ledger.
+          </p>
+        </div>
+      </div>
 
       {currencies.length ? (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
           {currencies.map(([code, value]) => {
             const total = Number(value.pending || 0) + Number(value.payable || 0) + Number(value.paid || 0);
             return (
-              <Card key={code} className="p-6 border border-slate-200/90 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wider text-slate-400">{code} earnings</p>
-                    <p className="mt-1 text-3xl font-black text-slate-900">{currency(total, code)}</p>
-                  </div>
-                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100">
-                    <Wallet size={24} />
-                  </span>
-                </div>
-                <div className="mt-6 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
-                  {[
-                    { label: 'Available to payout', amount: value.payable, tone: 'text-emerald-700 font-extrabold' },
-                    { label: 'Pending in-progress', amount: value.pending, tone: 'text-amber-700 font-bold' },
-                    { label: 'Paid out', amount: value.paid, tone: 'text-slate-600 font-bold' }
-                  ].map(({ label, amount, tone }) => (
-                    <div key={label}>
-                      <p className="text-[11px] font-semibold text-slate-400">{label}</p>
-                      <p className={`mt-1 text-sm ${tone}`}>{currency(amount, code)}</p>
+              <div
+                key={code}
+                className="relative overflow-hidden rounded-[28px] border border-purple-100/70 bg-gradient-to-r from-purple-50/20 via-white to-purple-50/30 p-6 sm:p-7 shadow-[0_4px_24px_-6px_rgba(0,0,0,0.04)]"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-purple-200/80 bg-purple-50 text-purple-600 shadow-xs">
+                      <Wallet size={22} strokeWidth={2.2} />
                     </div>
-                  ))}
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-wider text-purple-900/60">{code} EARNINGS</p>
+                      <p className="mt-0.5 text-3xl font-black text-slate-900">{currency(total, code)}</p>
+                    </div>
+                  </div>
+
+                  {/* 3D Wallet Graphic */}
+                  <div className="hidden sm:flex items-center justify-end relative pr-6">
+                    <div className="relative">
+                      {/* Floating Rupee Coin */}
+                      <div className="absolute -top-3 left-4 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-[11px] font-black text-amber-950 shadow-md ring-2 ring-white">
+                        ₹
+                      </div>
+                      {/* Cute Wallet Container */}
+                      <div className="relative flex h-14 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-400 via-purple-500 to-indigo-600 p-2 shadow-lg shadow-purple-500/25 ring-4 ring-purple-100/60">
+                        {/* Wallet flap & clasp */}
+                        <div className="absolute right-1 top-4 h-6 w-5 rounded-l-lg bg-amber-400 shadow-xs flex items-center justify-center">
+                          <div className="h-2 w-2 rounded-full bg-amber-700/60" />
+                        </div>
+                        <Wallet size={26} className="text-white/80" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </Card>
+
+                {/* 3 Sub-stat Cards */}
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3.5 border-t border-purple-50/80 pt-5">
+                  <div className="flex items-center gap-3 rounded-2xl bg-[#f5f3ff] border border-[#ede9fe] p-3.5 shadow-2xs">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700">
+                      <Coins size={18} strokeWidth={2.2} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-500">Available to payout</p>
+                      <p className="text-base font-black text-violet-700">{currency(value.payable, code)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-2xl bg-[#fffbeb] border border-[#fef3c7] p-3.5 shadow-2xs">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
+                      <Hourglass size={18} strokeWidth={2.2} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-500">Pending in-progress</p>
+                      <p className="text-base font-black text-amber-700">{currency(value.pending, code)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-2xl bg-[#f5f3ff] border border-[#ede9fe] p-3.5 shadow-2xs">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-purple-100 text-purple-700">
+                      <Check size={18} strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-slate-500">Paid out</p>
+                      <p className="text-base font-black text-slate-900">{currency(value.paid, code)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -696,102 +1138,140 @@ function Earnings() {
       )}
 
       {/* Itemized Service Earnings Ledger */}
-      <div className="mt-7">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="mt-8">
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <h3 className="text-base font-black text-slate-900">Service earnings ledger</h3>
+            <h3 className="text-base sm:text-lg font-black text-slate-900">Service earnings ledger</h3>
             <p className="text-xs text-slate-500">Every completed job credited to your provider balance.</p>
           </div>
           {items.length > 0 && (
-            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+            <span className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-purple-50 border border-purple-200/80 px-3 py-1 text-xs font-bold text-purple-700">
+              <Layers size={13} />
               {items.length} {items.length === 1 ? 'transaction' : 'transactions'}
             </span>
           )}
         </div>
 
         {items.length ? (
-          <div className="space-y-3">
+          <div className="space-y-3.5">
             {items.map((item) => {
               const isPayable = item.status === 'payable';
-              const isPaid = item.status === 'paid';
               const isPending = item.status === 'pending';
+              const isReversed = item.status === 'reversed';
+
+              const waveColor = isPayable
+                ? 'text-violet-100/50'
+                : isPending
+                ? 'text-amber-100/50'
+                : 'text-rose-100/50';
+
+              const iconBoxClass = isPayable
+                ? 'bg-violet-100 text-violet-700'
+                : isPending
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-rose-100 text-rose-700';
+
+              const formattedDate = new Date(item.completedAt || item.scheduledStart || item.createdAt).toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+              });
+
+              const isCleaning = (item.serviceName || '').toLowerCase().includes('clean');
 
               return (
-                <Card
+                <div
                   key={item.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:border-slate-300 transition"
+                  className="relative overflow-hidden rounded-[24px] border border-slate-100 bg-white p-5 sm:p-6 shadow-[0_4px_24px_-6px_rgba(0,0,0,0.04)] transition hover:shadow-md"
                 >
-                  <div className="flex items-start gap-3.5">
-                    <span
-                      className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-black ${
-                        isPayable
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          : isPaid
-                          ? 'bg-slate-100 text-slate-700'
-                          : isPending
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}
-                    >
-                      <Check size={18} strokeWidth={2.5} />
-                    </span>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="font-extrabold text-slate-900 text-sm sm:text-base">
-                          {item.serviceName || 'Service booking'}
-                        </h4>
-                        <Badge
-                          tone={
-                            isPayable ? 'green' : isPaid ? 'blue' : isPending ? 'amber' : 'rose'
-                          }
-                        >
-                          {isPayable ? 'Available for payout' : isPaid ? 'Paid out' : isPending ? 'Pending job' : 'Reversed'}
-                        </Badge>
+                  {/* Soft colored bottom wave */}
+                  <svg
+                    className={`pointer-events-none absolute -bottom-1 -right-1 h-20 w-60 ${waveColor}`}
+                    viewBox="0 0 240 80"
+                    fill="currentColor"
+                    preserveAspectRatio="none"
+                  >
+                    <path d="M0,80 C60,80 100,35 160,30 C200,26 220,10 240,0 L240,80 Z" />
+                  </svg>
+
+                  <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${iconBoxClass} shadow-xs`}>
+                        {isCleaning ? <Broom size={20} /> : <Zap size={20} />}
                       </div>
-                      <p className="mt-1 text-xs text-slate-500 font-medium">
-                        Booking {item.bookingNumber} · {new Date(item.completedAt || item.scheduledStart || item.createdAt).toLocaleString()}
-                      </p>
-                      {item.customerName && (
-                        <p className="mt-1 text-xs text-slate-400">
-                          Customer: <span className="font-semibold text-slate-600">{item.customerName}</span>
+
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h4 className="text-base font-black tracking-tight text-slate-900">
+                            {item.serviceName || 'Service booking'}
+                          </h4>
+                          {isPending && (
+                            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">
+                              Pending Job
+                            </span>
+                          )}
+                          {isReversed && (
+                            <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-800">
+                              Reversed
+                            </span>
+                          )}
+                          {isPayable && (
+                            <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-bold text-violet-800">
+                              Available For Payout
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 text-xs font-medium text-slate-500">
+                          Booking {item.bookingNumber} · <span className="font-semibold text-slate-700">{formattedDate}</span>
                         </p>
-                      )}
+
+                        {item.customerName && (
+                          <p className="mt-1 text-xs text-slate-400">
+                            Customer: <span className="font-semibold text-slate-700">{item.customerName}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-left sm:text-right shrink-0">
+                      <p className="text-base sm:text-lg font-black text-violet-700">
+                        +{currency(item.amount, item.currency)}
+                      </p>
+                      <p className="text-[11px] font-medium text-slate-400">
+                        {isPayable ? 'Ready in balance' : isPending ? 'Awaiting completion' : 'Refunded'}
+                      </p>
                     </div>
                   </div>
-
-                  <div className="text-left sm:text-right shrink-0">
-                    <p className="text-base sm:text-lg font-black text-emerald-700">
-                      +{currency(item.amount, item.currency)}
-                    </p>
-                    <p className="text-[11px] font-medium text-slate-400">
-                      {isPayable ? 'Ready in balance' : isPaid ? 'Settled to bank' : isPending ? 'Awaiting completion' : 'Refunded'}
-                    </p>
-                  </div>
-                </Card>
+                </div>
               );
             })}
           </div>
         ) : (
-          <Card className="p-8 text-center bg-slate-50 border-dashed border-slate-200">
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center">
             <p className="text-sm font-bold text-slate-700">No earnings transactions yet</p>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="mt-1 text-xs text-slate-400">
               Complete a service job and have the customer confirm completion to record your first earning.
             </p>
-          </Card>
+          </div>
         )}
       </div>
 
-      <Card className="mt-5 flex flex-col gap-4 bg-emerald-50/70 p-5 sm:flex-row sm:items-center">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-emerald-700">
-          <FileCheck2 size={19} />
-        </span>
+      <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-purple-100/80 bg-purple-50/40 p-5 shadow-2xs">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-purple-700 border border-purple-100 shadow-xs">
+          <FileText size={18} strokeWidth={2.2} />
+        </div>
         <div>
-          <h3 className="text-sm font-extrabold text-slate-800">Transparent & prompt settlements</h3>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <h4 className="text-sm font-extrabold text-slate-900">Transparent & prompt settlements</h4>
+          <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
             Provider earnings are recorded automatically upon completed services. Payout balances are scheduled for direct transfer to your registered account.
           </p>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -929,17 +1409,25 @@ function ProviderProfile({ user, onUserUpdate }) {
             <div className="relative shrink-0">
               {profile.avatarUrl ? (
                 <img
-                  src={profile.avatarUrl}
+                  src={resolveMediaUrl(profile.avatarUrl)}
                   alt={profile.displayName}
-                  className="h-20 w-20 rounded-2xl object-cover border-2 border-emerald-300 shadow-sm"
+                  className="h-20 w-20 rounded-2xl object-cover border-2 border-violet-300 shadow-sm"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextElementSibling) {
+                      e.currentTarget.nextElementSibling.style.display = 'grid';
+                    }
+                  }}
                 />
-              ) : (
-                <div className="grid h-20 w-20 place-items-center rounded-2xl bg-emerald-50 text-xl font-black text-emerald-800 border-2 border-dashed border-emerald-200">
-                  {profile.displayName?.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'P'}
-                </div>
-              )}
+              ) : null}
+              <div
+                style={{ display: profile.avatarUrl ? 'none' : 'grid' }}
+                className="h-20 w-20 place-items-center rounded-2xl bg-violet-50 text-xl font-black text-violet-800 border-2 border-dashed border-violet-200"
+              >
+                {profile.displayName?.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'P'}
+              </div>
               <label
-                className="absolute -bottom-1 -right-1 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-emerald-600 text-white shadow-md hover:bg-emerald-700 transition"
+                className="absolute -bottom-1 -right-1 grid h-7 w-7 cursor-pointer place-items-center rounded-full bg-violet-600 text-white shadow-md hover:bg-violet-700 transition"
                 title="Change photo"
               >
                 <Camera size={14} />
@@ -958,7 +1446,7 @@ function ProviderProfile({ user, onUserUpdate }) {
                 A clear profile picture helps customers identify you and builds confidence. JPEG, PNG, or WebP up to 5 MB.
               </p>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-                <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50/70 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl border border-violet-300 bg-violet-50/70 px-3 py-1.5 text-xs font-bold text-violet-800 hover:bg-violet-100 transition">
                   <UploadCloud size={14} />
                   {uploadingAvatar ? 'Uploading…' : 'Upload photo'}
                   <input
@@ -969,7 +1457,7 @@ function ProviderProfile({ user, onUserUpdate }) {
                     disabled={uploadingAvatar}
                   />
                 </label>
-                {avatarMessage && <span className="text-xs font-bold text-emerald-700">{avatarMessage}</span>}
+                {avatarMessage && <span className="text-xs font-bold text-violet-700">{avatarMessage}</span>}
               </div>
               {avatarError && <p className="text-xs text-rose-600 font-medium">{avatarError}</p>}
             </div>
@@ -983,7 +1471,7 @@ function ProviderProfile({ user, onUserUpdate }) {
             <Field label="Business name"><Input value={profile.businessName || ''} onChange={(event) => update('businessName', event.target.value)} placeholder="Optional" /></Field>
             <Field label="About your work"><Textarea rows={5} value={profile.bio || ''} onChange={(event) => update('bio', event.target.value)} maxLength={5000} placeholder="Share your experience, approach and the work you enjoy…" /></Field>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-              <Badge tone={profile.approvalStatus === 'approved' ? 'green' : 'amber'}>{profile.approvalStatus || 'pending review'}</Badge>
+              <Badge tone={profile.approvalStatus === 'approved' ? 'violet' : 'amber'}>{profile.approvalStatus || 'pending review'}</Badge>
               <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save profile'} <Save size={15} /></Button>
             </div>
           </form>
@@ -991,12 +1479,12 @@ function ProviderProfile({ user, onUserUpdate }) {
         <div className="space-y-5">
           <EmailVerification user={user} onVerified={onUserUpdate} />
           <Card className="p-5 sm:p-6">
-          <div className="flex items-center justify-between"><div><h3 className="font-extrabold text-slate-900">Verification documents</h3><p className="mt-1 text-xs text-slate-500">Private, secure upload · JPEG, PNG or PDF up to 10 MB</p></div><ShieldCheck className="text-emerald-700" size={20} /></div>
+          <div className="flex items-center justify-between"><div><h3 className="font-extrabold text-slate-900">Verification documents</h3><p className="mt-1 text-xs text-slate-500">Private, secure upload · JPEG, PNG or PDF up to 10 MB</p></div><ShieldCheck className="text-violet-700" size={20} /></div>
           <div className="mt-4 space-y-2">
             {(profile.documents || []).map((document) => (
               <div key={document.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3">
                 <div><p className="text-xs font-bold capitalize text-slate-700">{document.documentType.replaceAll('_', ' ')}</p><p className="mt-1 text-[10px] text-slate-400">Uploaded {new Date(document.createdAt).toLocaleDateString()}</p></div>
-                <Badge tone={document.status === 'approved' ? 'green' : document.status === 'rejected' ? 'rose' : 'amber'}>{document.status}</Badge>
+                <Badge tone={document.status === 'approved' ? 'violet' : document.status === 'rejected' ? 'rose' : 'amber'}>{document.status}</Badge>
               </div>
             ))}
             {!profile.documents?.length && <p className="rounded-xl bg-slate-50 p-4 text-xs leading-5 text-slate-500">Identity verification helps customers book with confidence. Your documents are kept private.</p>}
@@ -1011,13 +1499,13 @@ function ProviderProfile({ user, onUserUpdate }) {
                 <option value="business_license">Business license</option>
               </Select>
             </Field>
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/40 px-4 py-3 text-sm font-bold text-emerald-800 hover:bg-emerald-50">
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-violet-300 bg-violet-50/40 px-4 py-3 text-sm font-bold text-violet-800 hover:bg-violet-50">
               <Plus size={16} /> {uploading ? 'Uploading securely…' : 'Choose a document'}
               <input type="file" accept="image/jpeg,image/png,application/pdf" className="sr-only" onChange={uploadDocument} disabled={uploading} />
             </label>
           </form>
           {error && <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-xs text-rose-700">{error}</p>}
-          {message && <p role="status" className="mt-3 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">{message}</p>}
+          {message && <p role="status" className="mt-3 rounded-xl bg-violet-50 p-3 text-xs text-violet-800">{message}</p>}
           </Card>
         </div>
       </div>
@@ -1055,16 +1543,16 @@ export default function ProviderPortal({ user, active, onTabChange, onUserUpdate
   return (
     <div>
       {pendingCount > 0 && active !== 'requests' && (
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 p-4 shadow-sm animate-pulse">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border-2 border-violet-400 bg-gradient-to-r from-violet-50 via-purple-50 to-violet-50 p-4 shadow-sm animate-pulse">
           <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-700 text-white shadow-xs">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-violet-700 text-white shadow-xs">
               <Bell size={20} />
             </span>
             <div>
-              <h3 className="font-black text-sm text-emerald-950">
+              <h3 className="font-black text-sm text-violet-950">
                 You have {pendingCount} new service booking request{pendingCount > 1 ? 's' : ''} waiting!
               </h3>
-              <p className="text-xs text-emerald-800">Review customer details and accept the request to secure this appointment.</p>
+              <p className="text-xs text-violet-800">Review customer details and accept the request to secure this appointment.</p>
             </div>
           </div>
           <Button size="sm" onClick={() => onTabChange('requests')}>

@@ -15,7 +15,8 @@ const User = sequelize.define('User', {
   status: statusEnum(['active', 'pending', 'suspended', 'deleted']),
   emailVerifiedAt: DataTypes.DATE,
   lastLoginAt: DataTypes.DATE,
-  authVersion: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 }
+  authVersion: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
+  isDummy: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }
 }, { ...common, tableName: 'users', indexes: [{ fields: ['status'] }] });
 
 const Role = sequelize.define('Role', {
@@ -196,7 +197,8 @@ const Provider = sequelize.define('Provider', {
   isOnline: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   experienceYears: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   averageRating: { type: DataTypes.DECIMAL(3, 2), allowNull: false, defaultValue: 0 },
-  reviewCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }
+  reviewCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  isDummy: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }
 }, {
   ...common,
   tableName: 'providers',
@@ -268,7 +270,8 @@ const Booking = sequelize.define('Booking', {
   currency: { type: DataTypes.STRING(3), allowNull: false },
   customerNotes: DataTypes.TEXT,
   cancellationReason: DataTypes.STRING(500),
-  completedAt: DataTypes.DATE
+  completedAt: DataTypes.DATE,
+  isDummy: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }
 }, {
   ...common,
   tableName: 'bookings',
@@ -316,7 +319,8 @@ const Review = sequelize.define('Review', {
   providerId: { type: DataTypes.UUID, allowNull: false },
   rating: { type: DataTypes.TINYINT.UNSIGNED, allowNull: false, validate: { min: 1, max: 5 } },
   comment: DataTypes.TEXT,
-  status: statusEnum(['published', 'hidden', 'flagged'])
+  status: statusEnum(['published', 'hidden', 'flagged']),
+  isDummy: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false }
 }, { ...common, tableName: 'reviews', indexes: [{ fields: ['provider_id', 'status'] }] });
 
 const BookingStatusHistory = sequelize.define('BookingStatusHistory', {

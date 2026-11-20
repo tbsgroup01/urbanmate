@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import {
   AlertCircle,
   ArrowRight,
@@ -37,7 +38,7 @@ import {
   SectionHeading,
   Textarea
 } from '../components/ui';
-import { api, getErrorMessage } from '../lib/api';
+import { api, getErrorMessage, resolveMediaUrl } from '../lib/api';
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -49,6 +50,7 @@ function fileToDataUrl(file) {
 }
 
 export default function SettingsManagement() {
+  const { refreshSettings } = useSettings();
   const [activeTab, setActiveTab] = useState('general');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -130,6 +132,10 @@ export default function SettingsManagement() {
     setFeedback({ type: '', message: '' });
     try {
       await api.put('/settings/admin', { section, data });
+      try {
+        await refreshSettings();
+        window.dispatchEvent(new CustomEvent('urbanmate:settings-updated', { detail: { [section]: data } }));
+      } catch {}
       setFeedback({
         type: 'success',
         message: `${section.charAt(0).toUpperCase() + section.slice(1)} settings saved successfully!`
@@ -157,6 +163,11 @@ export default function SettingsManagement() {
         assetType: 'logo'
       });
       setGeneral((prev) => ({ ...prev, logoUrl: res.url }));
+      try {
+        await api.put('/settings/admin', { section: 'general', data: { ...general, logoUrl: res.url } });
+        await refreshSettings();
+        window.dispatchEvent(new CustomEvent('urbanmate:settings-updated', { detail: { logoUrl: res.url } }));
+      } catch {}
     } catch (err) {
       alert(`Logo upload failed: ${getErrorMessage(err)}`);
     } finally {
@@ -176,6 +187,11 @@ export default function SettingsManagement() {
         assetType: 'favicon'
       });
       setGeneral((prev) => ({ ...prev, faviconUrl: res.url }));
+      try {
+        await api.put('/settings/admin', { section: 'general', data: { ...general, faviconUrl: res.url } });
+        await refreshSettings();
+        window.dispatchEvent(new CustomEvent('urbanmate:settings-updated', { detail: { faviconUrl: res.url } }));
+      } catch {}
     } catch (err) {
       alert(`Favicon upload failed: ${getErrorMessage(err)}`);
     } finally {
@@ -195,6 +211,11 @@ export default function SettingsManagement() {
         assetType: 'upi_qr'
       });
       setPayment((prev) => ({ ...prev, upiQrUrl: res.url }));
+      try {
+        await api.put('/settings/admin', { section: 'payment', data: { ...payment, upiQrUrl: res.url } });
+        await refreshSettings();
+        window.dispatchEvent(new CustomEvent('urbanmate:settings-updated', { detail: { payment: { ...payment, upiQrUrl: res.url } } }));
+      } catch {}
     } catch (err) {
       alert(`QR Code upload failed: ${getErrorMessage(err)}`);
     } finally {
@@ -259,11 +280,11 @@ export default function SettingsManagement() {
         <div
           className={`flex items-center gap-3 rounded-2xl p-4 text-sm font-semibold transition ${
             feedback.type === 'success'
-              ? 'border border-emerald-200 bg-emerald-50 text-emerald-900'
+              ? 'border border-violet-200 bg-violet-50 text-violet-900'
               : 'border border-rose-200 bg-rose-50 text-rose-900'
           }`}
         >
-          {feedback.type === 'success' ? <Check size={18} className="text-emerald-700 shrink-0" /> : <AlertCircle size={18} className="text-rose-700 shrink-0" />}
+          {feedback.type === 'success' ? <Check size={18} className="text-violet-700 shrink-0" /> : <AlertCircle size={18} className="text-rose-700 shrink-0" />}
           <span className="flex-1">{feedback.message}</span>
           <button
             type="button"
@@ -313,13 +334,13 @@ export default function SettingsManagement() {
                 }}
                 className={`group flex items-center gap-3 border-b-2 px-3 sm:px-5 py-3 text-left transition ${
                   isActive
-                    ? 'border-emerald-700 text-emerald-950 font-bold'
+                    ? 'border-violet-700 text-violet-950 font-bold'
                     : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800 font-medium'
                 }`}
               >
                 <span
                   className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl transition ${
-                    isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                    isActive ? 'bg-violet-100 text-violet-800' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
                   }`}
                 >
                   <Icon size={18} />
@@ -334,7 +355,7 @@ export default function SettingsManagement() {
                 </span>
                 <span
                   className={`ml-1 hidden md:inline-block rounded-md px-2 py-0.5 text-[10px] font-bold ${
-                    isActive ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600'
+                    isActive ? 'bg-violet-700 text-white' : 'bg-slate-100 text-slate-600'
                   }`}
                 >
                   {tab.badge}
@@ -353,7 +374,7 @@ export default function SettingsManagement() {
           {/* Card 1: Branding Assets (Logo & Favicon) */}
           <Card className="p-5 sm:p-6 space-y-6">
             <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 text-violet-700">
                 <ImageIcon size={18} />
               </span>
               <div>
@@ -375,13 +396,13 @@ export default function SettingsManagement() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-center rounded-xl bg-white p-4 border border-slate-100 shadow-2xs min-h-[90px]">
                         <img
-                          src={general.logoUrl}
+                          src={resolveMediaUrl(general.logoUrl)}
                           alt="Site Logo Preview"
                           className="max-h-16 max-w-full object-contain"
                         />
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 truncate">
+                        <span className="text-[11px] text-violet-700 font-bold flex items-center gap-1 truncate">
                           <Check size={12} /> Active Logo
                         </span>
                         <div className="flex gap-2">
@@ -407,7 +428,7 @@ export default function SettingsManagement() {
                     </div>
                   ) : (
                     <label className="flex flex-col items-center justify-center cursor-pointer py-6 text-center">
-                      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-emerald-700 shadow-2xs border border-slate-200 mb-2">
+                      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-violet-700 shadow-2xs border border-slate-200 mb-2">
                         {uploadingLogo ? <RefreshCw size={20} className="animate-spin" /> : <UploadCloud size={20} />}
                       </span>
                       <span className="text-xs font-bold text-slate-800">
@@ -439,9 +460,9 @@ export default function SettingsManagement() {
                     <p className="text-[10px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider px-1">Browser Tab Preview</p>
                     <div className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 shadow-2xs max-w-full">
                       {general.faviconUrl ? (
-                        <img src={general.faviconUrl} alt="Favicon" className="h-4 w-4 object-contain shrink-0" />
+                        <img src={resolveMediaUrl(general.faviconUrl)} alt="Favicon" className="h-4 w-4 object-contain shrink-0" />
                       ) : (
-                        <span className="grid h-4 w-4 place-items-center rounded-xs bg-emerald-700 text-[9px] font-black text-white shrink-0">
+                        <span className="grid h-4 w-4 place-items-center rounded-xs bg-violet-700 text-[9px] font-black text-white shrink-0">
                           U
                         </span>
                       )}
@@ -587,7 +608,7 @@ export default function SettingsManagement() {
                   value={general.headerScripts}
                   onChange={(e) => setGeneral((prev) => ({ ...prev, headerScripts: e.target.value }))}
                   placeholder={`<meta name="google-site-verification" content="..." />\n<!-- Google tag (gtag.js) -->\n<script async src="https://www.googletagmanager.com/gtag/js?id=..."></script>`}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-950 p-4 font-mono text-xs text-emerald-400 outline-none focus:border-emerald-500 shadow-inner"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-950 p-4 font-mono text-xs text-violet-400 outline-none focus:border-violet-500 shadow-inner"
                   spellCheck="false"
                 />
               </div>
@@ -605,7 +626,7 @@ export default function SettingsManagement() {
                   value={general.bodyScripts}
                   onChange={(e) => setGeneral((prev) => ({ ...prev, bodyScripts: e.target.value }))}
                   placeholder={`<!-- Live Chat Widget or Tracking Script -->\n<script>\n  window.$crisp = [];\n  // ...\n</script>`}
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-950 p-4 font-mono text-xs text-emerald-400 outline-none focus:border-emerald-500 shadow-inner"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-950 p-4 font-mono text-xs text-violet-400 outline-none focus:border-violet-500 shadow-inner"
                   spellCheck="false"
                 />
               </div>
@@ -617,7 +638,7 @@ export default function SettingsManagement() {
             <Button
               onClick={() => saveSection('general', general)}
               disabled={saving}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white min-w-[160px]"
+              className="bg-violet-700 hover:bg-violet-800 text-white min-w-[160px]"
             >
               <Save size={16} />
               {saving ? 'Saving changes…' : 'Save General Settings'}
@@ -635,7 +656,7 @@ export default function SettingsManagement() {
           <Card className="p-5 sm:p-6 space-y-5">
             <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 text-violet-700">
                   <CreditCard size={18} />
                 </span>
                 <div>
@@ -659,7 +680,7 @@ export default function SettingsManagement() {
                   type="button"
                   onClick={() => setPayment((prev) => ({ ...prev, mode: 'live' }))}
                   className={`rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 ${
-                    payment.mode === 'live' ? 'bg-emerald-700 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                    payment.mode === 'live' ? 'bg-violet-700 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <span>Live Production</span>
@@ -676,8 +697,8 @@ export default function SettingsManagement() {
                 </span>
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3.5 text-xs text-emerald-950 font-medium">
-                <BadgeCheck size={16} className="text-emerald-700 shrink-0" />
+              <div className="flex items-center gap-2 rounded-xl bg-violet-50 border border-violet-200 p-3.5 text-xs text-violet-950 font-medium">
+                <BadgeCheck size={16} className="text-violet-700 shrink-0" />
                 <span>
                   <strong>Live Mode Active:</strong> Real transactions will be processed via your live Razorpay merchant account and registered UPI QR.
                 </span>
@@ -695,7 +716,7 @@ export default function SettingsManagement() {
                   type="checkbox"
                   checked={payment.razorpayEnabled}
                   onChange={(e) => setPayment((prev) => ({ ...prev, razorpayEnabled: e.target.checked }))}
-                  className="h-5 w-5 accent-emerald-700 rounded cursor-pointer"
+                  className="h-5 w-5 accent-violet-700 rounded cursor-pointer"
                 />
               </label>
 
@@ -708,7 +729,7 @@ export default function SettingsManagement() {
                   type="checkbox"
                   checked={payment.upiEnabled}
                   onChange={(e) => setPayment((prev) => ({ ...prev, upiEnabled: e.target.checked }))}
-                  className="h-5 w-5 accent-emerald-700 rounded cursor-pointer"
+                  className="h-5 w-5 accent-violet-700 rounded cursor-pointer"
                 />
               </label>
 
@@ -721,7 +742,7 @@ export default function SettingsManagement() {
                   type="checkbox"
                   checked={payment.codEnabled}
                   onChange={(e) => setPayment((prev) => ({ ...prev, codEnabled: e.target.checked }))}
-                  className="h-5 w-5 accent-emerald-700 rounded cursor-pointer"
+                  className="h-5 w-5 accent-violet-700 rounded cursor-pointer"
                 />
               </label>
             </div>
@@ -739,7 +760,7 @@ export default function SettingsManagement() {
                   <p className="text-xs text-slate-400">Obtain Key ID and Secret from Razorpay Dashboard &gt; Settings &gt; API Keys.</p>
                 </div>
               </div>
-              <Badge tone={payment.mode === 'live' ? 'green' : 'amber'}>
+              <Badge tone={payment.mode === 'live' ? 'violet' : 'amber'}>
                 {payment.mode === 'live' ? 'Live Keys Required' : 'Test Keys'}
               </Badge>
             </div>
@@ -804,7 +825,7 @@ export default function SettingsManagement() {
                 <button
                   type="button"
                   onClick={copyWebhookUrl}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shrink-0"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-violet-700 hover:text-violet-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shrink-0"
                 >
                   {copiedWebhook ? <Check size={13} /> : <Copy size={13} />}
                   <span>{copiedWebhook ? 'Copied!' : 'Copy'}</span>
@@ -816,7 +837,7 @@ export default function SettingsManagement() {
           {/* UPI & Payment QR Code Upload Card */}
           <Card className="p-5 sm:p-6 space-y-6">
             <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-teal-50 text-teal-700">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 text-violet-700">
                 <QrCode size={18} />
               </span>
               <div>
@@ -861,7 +882,7 @@ export default function SettingsManagement() {
                     </div>
                   ) : (
                     <label className="flex flex-col items-center justify-center cursor-pointer py-6">
-                      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-teal-700 shadow-2xs border border-slate-200 mb-2">
+                      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-violet-700 shadow-2xs border border-slate-200 mb-2">
                         {uploadingQr ? <RefreshCw size={20} className="animate-spin" /> : <QrCode size={22} />}
                       </span>
                       <span className="text-xs font-bold text-slate-800">
@@ -917,7 +938,7 @@ export default function SettingsManagement() {
             <Button
               onClick={() => saveSection('payment', payment)}
               disabled={saving}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white min-w-[160px]"
+              className="bg-violet-700 hover:bg-violet-800 text-white min-w-[160px]"
             >
               <Save size={16} />
               {saving ? 'Saving changes…' : 'Save Payment Configuration'}
@@ -935,7 +956,7 @@ export default function SettingsManagement() {
           <Card className="p-5 sm:p-6 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 text-violet-700">
                   <Mail size={18} />
                 </span>
                 <div>
@@ -951,9 +972,9 @@ export default function SettingsManagement() {
                   type="checkbox"
                   checked={mail.enabled}
                   onChange={(e) => setMail((prev) => ({ ...prev, enabled: e.target.checked }))}
-                  className="h-5 w-5 accent-emerald-700 rounded cursor-pointer"
+                  className="h-5 w-5 accent-violet-700 rounded cursor-pointer"
                 />
-                <Badge tone={mail.enabled ? 'green' : 'gray'}>
+                <Badge tone={mail.enabled ? 'violet' : 'gray'}>
                   {mail.enabled ? 'Active' : 'Disabled'}
                 </Badge>
               </label>
@@ -986,7 +1007,7 @@ export default function SettingsManagement() {
                       onClick={() => setMail((prev) => ({ ...prev, encryption: enc, secure: enc === 'ssl' }))}
                       className={`rounded-xl py-2 text-xs font-bold uppercase transition ${
                         mail.encryption === enc
-                          ? 'bg-emerald-700 text-white shadow-2xs'
+                          ? 'bg-violet-700 text-white shadow-2xs'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
@@ -1063,7 +1084,7 @@ export default function SettingsManagement() {
           <Card className="p-5 sm:p-6 space-y-4 bg-slate-50/70 border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-700 text-white shadow-2xs">
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-700 text-white shadow-2xs">
                   <Sparkles size={17} />
                 </span>
                 <div>
@@ -1106,13 +1127,13 @@ export default function SettingsManagement() {
               <div
                 className={`rounded-2xl p-4 text-xs font-semibold leading-relaxed ${
                   testEmailResult.success
-                    ? 'border border-emerald-300 bg-emerald-50 text-emerald-950'
+                    ? 'border border-violet-300 bg-violet-50 text-violet-950'
                     : 'border border-rose-300 bg-rose-50 text-rose-950'
                 }`}
               >
                 <div className="flex items-start gap-2.5">
                   {testEmailResult.success ? (
-                    <BadgeCheck size={18} className="text-emerald-700 shrink-0 mt-0.5" />
+                    <BadgeCheck size={18} className="text-violet-700 shrink-0 mt-0.5" />
                   ) : (
                     <AlertCircle size={18} className="text-rose-700 shrink-0 mt-0.5" />
                   )}
@@ -1132,7 +1153,7 @@ export default function SettingsManagement() {
             <Button
               onClick={() => saveSection('mail', mail)}
               disabled={saving}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white min-w-[160px]"
+              className="bg-violet-700 hover:bg-violet-800 text-white min-w-[160px]"
             >
               <Save size={16} />
               {saving ? 'Saving changes…' : 'Save Mail Configuration'}

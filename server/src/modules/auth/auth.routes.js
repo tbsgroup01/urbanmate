@@ -12,6 +12,7 @@ const {
   loginSchema,
   providerRegisterSchema,
   forgotPasswordSchema,
+  forgotPasswordVerifyOtpSchema,
   resetPasswordSchema,
   otpVerifySchema,
   userStatusSchema,
@@ -39,18 +40,18 @@ const registrationLimiter = rateLimit({
 
 const recoveryLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 5,
+  limit: 30,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  handler: (req, res, next) => next(new AppError('Too many recovery attempts', 429, 'RATE_LIMITED'))
+  handler: (req, res, next) => next(new AppError('Too many recovery attempts. Please try again later.', 429, 'RATE_LIMITED'))
 });
 
 const otpLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 3,
+  limit: 30,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
-  handler: (req, res, next) => next(new AppError('Too many verification attempts', 429, 'RATE_LIMITED'))
+  handler: (req, res, next) => next(new AppError('Too many verification attempts. Please try again later.', 429, 'RATE_LIMITED'))
 });
 
 const login = (role, message) => asyncHandler(controller.loginFor(role, message));
@@ -89,6 +90,7 @@ router.post('/admin/login', loginLimiter, validateRequest(loginSchema), login('a
 router.post('/refresh', asyncHandler(controller.refresh));
 router.post('/logout', asyncHandler(controller.logout));
 router.post('/password/forgot', recoveryLimiter, validateRequest(forgotPasswordSchema), asyncHandler(controller.forgotPassword));
+router.post('/password/verify-otp', recoveryLimiter, validateRequest(forgotPasswordVerifyOtpSchema), asyncHandler(controller.verifyPasswordOtp));
 router.post('/password/reset', recoveryLimiter, validateRequest(resetPasswordSchema), asyncHandler(controller.resetPassword));
 
 router.get('/me', authenticate, asyncHandler(controller.currentUser));

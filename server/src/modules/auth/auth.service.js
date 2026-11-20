@@ -321,34 +321,130 @@ async function revokeSession(rawToken) {
   );
 }
 
-async function requestPasswordReset(email, metadata) {
-  delivery.assertConfigured();
+async function requestPasswordReset(email, metadata = {}) {
+  await delivery.assertConfigured();
+  const cleanEmail = String(email || '').toLowerCase().trim();
   const user = await User.findOne({
-    where: { email, status: 'active' },
-    attributes: ['id', 'email']
+    where: { email: cleanEmail, status: 'active' },
+    attributes: ['id', 'email', 'status']
   });
-  if (!user) return;
 
-  const rawToken = crypto.randomBytes(32).toString('base64url');
-  await PasswordResetToken.create({
-    userId: user.id,
-    tokenHash: hashOpaqueToken(rawToken),
-    expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
-    createdByIp: metadata.ip
+  if (!user) {
+    throw new AppError('No active account found with this email address.', 404, 'USER_NOT_FOUND');
+  }
+
+  // Generate a secure 6-digit OTP
+  const otp = String(crypto.randomInt(100000, 1000000));
+  const now = new Date();
+
+  await sequelize.transaction(async (transaction) => {
+    // Invalidate any previous unverified password_reset OTPs for this user
+    await OtpVerification.update(
+      { verifiedAt: now },
+      { where: { userId: user.id, purpose: 'password_reset', verifiedAt: null }, transaction }
+    );
+
+    // Create new OTP challenge
+    await OtpVerification.create({
+      userId: user.id,
+      purpose: 'password_reset',
+      target: user.email,
+      codeHash: hashOtp(otp),
+      expiresAt: new Date(now.getTime() + OTP_TTL_MS)
+    }, { transaction });
   });
 
   try {
-    await delivery.sendPasswordReset(user.email, rawToken);
+    await delivery.sendPasswordResetOtp(user.email, otp);
   } catch (error) {
-    await PasswordResetToken.destroy({ where: { tokenHash: hashOpaqueToken(rawToken) } });
+    if (error instanceof AppError) {
+      throw error;
+    }
     logger.error({ err: error, userId: user.id }, 'Password reset email delivery failed');
+    throw new AppError(`Failed to send verification email: ${error.message}`, 503, 'EMAIL_SEND_FAILED');
   }
+
+  return { email: user.email, expiresInMinutes: 10 };
 }
 
-async function resetPassword(rawToken, password) {
+async function verifyPasswordResetOtp(email, code) {
+  const cleanEmail = String(email || '').toLowerCase().trim();
+  const user = await User.findOne({
+    where: { email: cleanEmail, status: 'active' },
+    attributes: ['id', 'email']
+  });
+  if (!user) {
+    throw new AppError('No active account found with this email address.', 404, 'USER_NOT_FOUND');
+  }
+
+  const outcome = await sequelize.transaction(async (transaction) => {
+    const challenge = await OtpVerification.findOne({
+      where: {
+        userId: user.id,
+        purpose: 'password_reset',
+        verifiedAt: null,
+        expiresAt: { [Op.gt]: new Date() }
+      },
+      order: [['createdAt', 'DESC']],
+      transaction,
+      lock: transaction.LOCK.UPDATE
+    });
+
+    if (!challenge) return { error: 'OTP_NOT_FOUND' };
+    if (challenge.attempts >= OTP_MAX_ATTEMPTS) return { error: 'OTP_ATTEMPTS_EXCEEDED' };
+
+    challenge.attempts += 1;
+    if (!hashesMatch(challenge.codeHash, hashOtp(String(code).trim()))) {
+      await challenge.save({ fields: ['attempts'], transaction });
+      return { error: 'INVALID_OTP' };
+    }
+
+    challenge.verifiedAt = new Date();
+    await challenge.save({ fields: ['attempts', 'verifiedAt'], transaction });
+
+    // Generate secure resetToken
+    const rawResetToken = crypto.randomBytes(32).toString('base64url');
+    await PasswordResetToken.create({
+      userId: user.id,
+      tokenHash: hashOpaqueToken(rawResetToken),
+      expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+      createdByIp: 'otp_verified'
+    }, { transaction });
+
+    return { success: true, resetToken: rawResetToken };
+  });
+
+  if (outcome.error) {
+    const messages = {
+      OTP_NOT_FOUND: 'The verification code has expired or was not requested. Please request a new OTP.',
+      OTP_ATTEMPTS_EXCEEDED: 'Too many incorrect attempts. Please request a new code.',
+      INVALID_OTP: 'Incorrect verification code. Please check your email and enter the 6-digit OTP.'
+    };
+    const statusCode = outcome.error === 'OTP_ATTEMPTS_EXCEEDED' ? 429 : 400;
+    throw new AppError(messages[outcome.error] || 'Verification code is invalid or expired', statusCode, outcome.error);
+  }
+
+  return {
+    email: user.email,
+    resetToken: outcome.resetToken
+  };
+}
+
+async function resetPassword(payload, password) {
+  let tokenToUse = typeof payload === 'string' ? payload : (payload?.resetToken || payload?.token);
+
+  if (!tokenToUse && payload && payload.email && payload.otp) {
+    const verifyResult = await verifyPasswordResetOtp(payload.email, payload.otp);
+    tokenToUse = verifyResult.resetToken;
+  }
+
+  if (!tokenToUse) {
+    throw new AppError('A valid reset token or verification OTP is required.', 400, 'INVALID_RESET_TOKEN');
+  }
+
   const outcome = await sequelize.transaction(async (transaction) => {
     const resetToken = await PasswordResetToken.findOne({
-      where: { tokenHash: hashOpaqueToken(rawToken) },
+      where: { tokenHash: hashOpaqueToken(tokenToUse) },
       transaction,
       lock: transaction.LOCK.UPDATE
     });
@@ -377,8 +473,10 @@ async function resetPassword(rawToken, password) {
   });
 
   if (outcome.error) {
-    throw new AppError('Password reset token is invalid or expired', 400, outcome.error);
+    throw new AppError('Password reset session has expired or is invalid. Please request a new code.', 400, outcome.error);
   }
+
+  return { success: true };
 }
 
 async function requestEmailOtp(user) {
@@ -551,6 +649,7 @@ module.exports = {
   refreshSession,
   revokeSession,
   requestPasswordReset,
+  verifyPasswordResetOtp,
   resetPassword,
   requestEmailOtp,
   verifyEmailOtp,

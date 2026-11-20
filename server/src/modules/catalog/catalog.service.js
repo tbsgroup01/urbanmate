@@ -86,6 +86,7 @@ function availabilityExpression(location) {
         ${areaFilter}
     )
   )`);
+
 }
 
 function getEffectivePrice(service, location) {

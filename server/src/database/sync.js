@@ -55,6 +55,12 @@ async function syncDatabase() {
   }
   console.log('\x1b[32m%s\x1b[0m', 'Base categories ready.');
 
+  // Seed rich dummy data for testing and preview (auto-removes when real bookings arrive)
+  console.log('Checking and seeding dummy marketplace data...');
+  const { seedDummyData } = require('./dummy-service');
+  await seedDummyData();
+  console.log('\x1b[32m%s\x1b[0m', 'Dummy marketplace data ready.');
+
   console.log('\x1b[32m%s\x1b[0m', '\n========================================');
   console.log('\x1b[32m%s\x1b[0m', 'Database setup completed successfully!');
   console.log('\x1b[32m%s\x1b[0m', '========================================\n');

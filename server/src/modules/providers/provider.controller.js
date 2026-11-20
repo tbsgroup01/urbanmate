@@ -3,7 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const providerService = require('./provider.service');
 const { success } = require('../../utils/api-response');
-const { ProviderAvailability } = require('../../models');
+const { ProviderAvailability, User } = require('../../models');
 const AppError = require('../../utils/app-error');
 
 async function myProfile(req, res) {
@@ -155,6 +155,11 @@ async function uploadAvatar(req, res) {
   const avatarUrl = `${protocol}://${host}/uploads/${safeFilename}`;
 
   await req.provider.update({ avatarUrl });
+  if (req.user) {
+    await req.user.update({ avatarUrl });
+  } else if (req.provider.userId) {
+    await User.update({ avatarUrl }, { where: { id: req.provider.userId } });
+  }
 
   return success(res, { avatarUrl }, {
     statusCode: 201,

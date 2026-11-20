@@ -1,4 +1,36 @@
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1').replace(/\/$/, '');
+export const SERVER_BASE = API_BASE.replace(/\/api\/v1\/?$/, '');
+
+export function resolveMediaUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('/uploads/')) {
+    return `${SERVER_BASE}${trimmed}`;
+  }
+  if (trimmed.startsWith('uploads/')) {
+    return `${SERVER_BASE}/${trimmed}`;
+  }
+  const base = import.meta.env.BASE_URL || '/';
+  const cleanBase = base.endsWith('/') ? base : `${base}/`;
+  const cleanPath = trimmed.replace(/^\//, '');
+  return `${cleanBase}${cleanPath}`;
+}
+
+export function assetUrl(path) {
+  if (!path || typeof path !== 'string') return '';
+  const trimmed = path.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+  const base = import.meta.env.BASE_URL || '/';
+  const cleanBase = base.endsWith('/') ? base : `${base}/`;
+  const cleanPath = trimmed.replace(/^\//, '');
+  return `${cleanBase}${cleanPath}`;
+}
+
 const TOKEN_KEY = 'urbanmate_access_token';
 
 let accessToken = sessionStorage.getItem(TOKEN_KEY);
@@ -79,10 +111,24 @@ async function send(path, options = {}, token = accessToken) {
   const payload = await response.json().catch(() => null);
 
   if (response.status === 401 && token && !options.retrying) {
-    const refreshedToken = await refreshAccessToken();
-    return send(path, { ...options, retrying: true }, refreshedToken);
+    try {
+      const refreshedToken = await refreshAccessToken();
+      return send(path, { ...options, retrying: true }, refreshedToken);
+    } catch (refreshErr) {
+      setAccessToken(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('urbanmate:unauthorized'));
+      }
+      throw refreshErr;
+    }
   }
   if (!response.ok || payload?.success === false) {
+    if (response.status === 401) {
+      setAccessToken(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('urbanmate:unauthorized'));
+      }
+    }
     const apiError = getApiError(payload);
     throw new ApiError(
       apiError.message || `Request failed (${response.status})`,

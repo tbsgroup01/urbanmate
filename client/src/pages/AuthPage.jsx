@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  KeyRound,
   Lock,
   Mail,
   Phone,
@@ -88,9 +89,26 @@ export default function AuthPage({
   const [providerDetailsOpen, setProviderDetailsOpen] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [forgotStep, setForgotStep] = useState(1); // 1 = email, 2 = otp, 3 = new password, 4 = success
+  const [otp, setOtp] = useState('');
+  const [activeResetToken, setActiveResetToken] = useState(resetToken || '');
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    let timer;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   useEffect(() => {
     setMode(initialMode);
+    if (initialMode === 'forgot') {
+      setForgotStep(1);
+      setOtp('');
+      setActiveResetToken('');
+    }
   }, [initialMode]);
 
   useEffect(() => {
@@ -124,6 +142,11 @@ export default function AuthPage({
     setError('');
     setNotice('');
     setShowPassword(false);
+    if (nextMode === 'forgot') {
+      setForgotStep(1);
+      setOtp('');
+      setActiveResetToken('');
+    }
     if (nextMode === 'login') navigate('/login');
     else if (nextMode === 'register') navigate(role === 'provider' ? '/register/provider' : '/register');
     else if (nextMode === 'forgot') navigate('/forgot-password');
@@ -140,6 +163,22 @@ export default function AuthPage({
     return value ? { [key]: value } : {};
   }
 
+  async function handleResendOtp() {
+    if (resendCooldown > 0 || busy) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await api.post('/auth/password/forgot', { email: values.email.trim() });
+      setResendCooldown(60);
+      setNotice(`A new 6-digit verification code has been sent to ${values.email.trim()}.`);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setBusy(true);
@@ -148,21 +187,69 @@ export default function AuthPage({
 
     try {
       if (mode === 'forgot') {
-        await api.post('/auth/password/forgot', { email: values.email.trim() });
-        setNotice('If an account exists for that email, password reset instructions have been sent.');
-        return;
+        if (forgotStep === 1) {
+          if (!values.email.trim()) {
+            setError('Please enter your email address.');
+            return;
+          }
+          await api.post('/auth/password/forgot', { email: values.email.trim() });
+          setForgotStep(2);
+          setResendCooldown(60);
+          setNotice(`A 6-digit verification code has been sent to ${values.email.trim()}.`);
+          return;
+        }
+
+        if (forgotStep === 2) {
+          if (!otp.trim() || otp.trim().length !== 6) {
+            setError('Please enter the 6-digit verification code.');
+            return;
+          }
+          const verifyRes = await api.post('/auth/password/verify-otp', {
+            email: values.email.trim(),
+            otp: otp.trim()
+          });
+          setActiveResetToken(verifyRes.resetToken);
+          setForgotStep(3);
+          setNotice('Verification code accepted! Please set your new password below.');
+          return;
+        }
+
+        if (forgotStep === 3) {
+          if (!values.password || values.password.length < 6) {
+            setError('Password must be at least 6 characters.');
+            return;
+          }
+          if (values.password !== values.confirmPassword) {
+            setError('Your passwords do not match.');
+            return;
+          }
+          await api.post('/auth/password/reset', {
+            email: values.email.trim(),
+            resetToken: activeResetToken,
+            password: values.password
+          });
+          setValues((current) => ({ ...current, password: '', confirmPassword: '' }));
+          setForgotStep(4);
+          setNotice('Password updated successfully! You can now sign in with your new password.');
+          return;
+        }
       }
 
       if (mode === 'reset') {
-        if (!resetToken) {
+        const tokenToUse = activeResetToken || resetToken;
+        if (!tokenToUse) {
           setError('This reset link is invalid or incomplete. Please request a new password reset email.');
+          return;
+        }
+        if (values.password.length < 6) {
+          setError('Password must be at least 6 characters.');
           return;
         }
         if (values.password !== values.confirmPassword) {
           setError('Your passwords do not match.');
           return;
         }
-        await api.post('/auth/password/reset', { token: resetToken, password: values.password });
+        await api.post('/auth/password/reset', { token: tokenToUse, password: values.password });
         setValues((current) => ({ ...current, password: '', confirmPassword: '' }));
         onResetComplete?.();
         switchMode('login');
@@ -265,7 +352,7 @@ export default function AuthPage({
           <div className="hidden lg:flex w-full lg:w-5/12 flex-col justify-between self-stretch rounded-3xl bg-gradient-to-br from-[#12092b] via-[#1f1142] to-[#0c1829] p-9 xl:p-12 text-white relative overflow-hidden shadow-2xl">
             {/* Ambient background glows */}
             <div className="absolute -top-24 -left-24 w-72 h-72 bg-violet-600/30 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-72 h-72 bg-violet-500/20 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative z-10">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-semibold text-violet-200 mb-6">
@@ -363,7 +450,15 @@ export default function AuthPage({
                 <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
                   {mode === 'login' && 'Welcome back to Urbanmate'}
                   {mode === 'register' && (role === 'provider' ? 'Partner with Urbanmate' : 'Join Urbanmate today')}
-                  {mode === 'forgot' && 'Reset your password'}
+                  {mode === 'forgot' && (
+                    forgotStep === 1
+                      ? 'Forgot your password?'
+                      : forgotStep === 2
+                        ? 'Verify 6-digit OTP'
+                        : forgotStep === 3
+                          ? 'Set a new password'
+                          : 'Password reset complete'
+                  )}
                   {mode === 'reset' && 'Set a new password'}
                 </h1>
                 <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">
@@ -371,7 +466,15 @@ export default function AuthPage({
                   {mode === 'register' && (role === 'provider'
                     ? 'Start taking on verified local jobs with top earnings and prompt payouts.'
                     : 'Create your free account to book top-tier professionals in seconds.')}
-                  {mode === 'forgot' && 'Enter your registered email address and we’ll send you a password reset link.'}
+                  {mode === 'forgot' && (
+                    forgotStep === 1
+                      ? 'Enter your registered email address and we will send a 6-digit verification code.'
+                      : forgotStep === 2
+                        ? `Enter the 6-digit verification code sent to ${values.email}.`
+                        : forgotStep === 3
+                          ? 'Choose a strong password of at least 6 characters for your account.'
+                          : 'Your password has been securely reset. You can now log in.'
+                  )}
                   {mode === 'reset' && 'Choose a strong password of at least 6 characters for your account.'}
                 </p>
               </div>
@@ -550,8 +653,8 @@ export default function AuthPage({
                   </>
                 )}
 
-                {/* Email Field (Login, Register, Forgot) */}
-                {(mode === 'login' || mode === 'register' || mode === 'forgot') && (
+                {/* Email Field (Login, Register, Forgot Step 1) */}
+                {(mode === 'login' || mode === 'register' || (mode === 'forgot' && forgotStep === 1)) && (
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
                       Email Address <span className="text-rose-500">*</span>
@@ -571,12 +674,73 @@ export default function AuthPage({
                   </div>
                 )}
 
-                {/* Password Fields */}
-                {(mode === 'login' || mode === 'register' || mode === 'reset') && (
+                {/* OTP Verification Field for Forgot Step 2 */}
+                {mode === 'forgot' && forgotStep === 2 && (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl bg-violet-50/80 p-3.5 border border-violet-100 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center font-bold">
+                          <Mail size={15} />
+                        </div>
+                        <div>
+                          <span className="text-[11px] text-slate-500 block font-semibold">Verification code sent to</span>
+                          <span className="text-xs font-bold text-violet-950">{values.email}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setForgotStep(1); setError(''); setNotice(''); }}
+                        className="text-xs font-bold text-violet-700 hover:text-violet-900 underline"
+                      >
+                        Change
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                        6-Digit Verification Code (OTP) <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          value={otp}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                            setOtp(val);
+                            setError('');
+                          }}
+                          autoFocus
+                          required
+                          placeholder="••••••"
+                          className="w-full text-center font-mono text-2xl tracking-[0.4em] font-black rounded-xl border border-slate-200 bg-white py-3 text-violet-950 outline-none transition focus:border-violet-600 focus:ring-4 focus:ring-violet-600/10"
+                        />
+                        <KeyRound size={18} className="absolute left-3.5 top-3.5 text-slate-400" />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-xs text-slate-500">Didn’t receive the code?</span>
+                      <button
+                        type="button"
+                        disabled={resendCooldown > 0 || busy}
+                        onClick={handleResendOtp}
+                        className="text-xs font-bold text-violet-700 hover:text-violet-900 disabled:text-slate-400 disabled:cursor-not-allowed"
+                      >
+                        {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP code'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Password Fields (Login, Register, Reset, Forgot Step 3) */}
+                {(mode === 'login' || mode === 'register' || mode === 'reset' || (mode === 'forgot' && forgotStep === 3)) && (
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-xs font-bold text-slate-700">
-                        {mode === 'reset' ? 'New Password' : 'Password'} <span className="text-rose-500">*</span>
+                        {mode === 'reset' || (mode === 'forgot' && forgotStep === 3) ? 'New Password' : 'Password'} <span className="text-rose-500">*</span>
                       </label>
                       {mode === 'login' && (
                         <button
@@ -611,11 +775,11 @@ export default function AuthPage({
                   </div>
                 )}
 
-                {/* Confirm Password (Register or Reset) */}
-                {(mode === 'register' || mode === 'reset') && (
+                {/* Confirm Password (Register, Reset, Forgot Step 3) */}
+                {(mode === 'register' || mode === 'reset' || (mode === 'forgot' && forgotStep === 3)) && (
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      Confirm Password <span className="text-rose-500">*</span>
+                      Confirm New Password <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -642,32 +806,49 @@ export default function AuthPage({
 
                 {/* Success Notice Banner */}
                 {notice && (
-                  <div role="status" className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-semibold leading-relaxed flex items-start gap-2.5">
-                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                  <div role="status" className="p-3.5 rounded-xl bg-violet-50 border border-violet-200/80 text-violet-800 text-xs font-semibold leading-relaxed flex items-start gap-2.5">
+                    <CheckCircle2 size={16} className="text-violet-600 shrink-0 mt-0.5" />
                     <span className="flex-1">{notice}</span>
                   </div>
                 )}
 
                 {/* Submit Action Button */}
-                <button
-                  type="submit"
-                  disabled={busy || (mode === 'reset' && !resetToken)}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-700 hover:bg-violet-800 text-white font-bold py-3 px-4 shadow-sm hover:shadow transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {busy ? (
-                    <span>Please wait…</span>
-                  ) : (
-                    <>
-                      <span>
-                        {mode === 'login' && 'Sign in to account'}
-                        {mode === 'register' && (role === 'provider' ? 'Register as Service Partner' : 'Create Free Account')}
-                        {mode === 'forgot' && 'Send password reset link'}
-                        {mode === 'reset' && 'Save new password'}
-                      </span>
-                      <ArrowRight size={16} />
-                    </>
-                  )}
-                </button>
+                {mode === 'forgot' && forgotStep === 4 ? (
+                  <button
+                    type="button"
+                    onClick={() => switchMode('login')}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-700 hover:bg-violet-800 text-white font-bold py-3 px-4 shadow-sm hover:shadow transition"
+                  >
+                    <span>Sign in with new password</span>
+                    <ArrowRight size={16} />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={busy || (mode === 'reset' && !resetToken)}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-violet-700 hover:bg-violet-800 text-white font-bold py-3 px-4 shadow-sm hover:shadow transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {busy ? (
+                      <span>Please wait…</span>
+                    ) : (
+                      <>
+                        <span>
+                          {mode === 'login' && 'Sign in to account'}
+                          {mode === 'register' && (role === 'provider' ? 'Register as Service Partner' : 'Create Free Account')}
+                          {mode === 'forgot' && (
+                            forgotStep === 1
+                              ? 'Send 6-digit verification code'
+                              : forgotStep === 2
+                                ? 'Verify OTP code'
+                                : 'Save new password'
+                          )}
+                          {mode === 'reset' && 'Save new password'}
+                        </span>
+                        <ArrowRight size={16} />
+                      </>
+                    )}
+                  </button>
+                )}
               </form>
 
               {/* Back to Sign In links for Forgot / Reset */}

@@ -22,11 +22,11 @@ import {
   PageLoader,
   currency
 } from '../components/ui';
-import { api, getErrorMessage } from '../lib/api';
+import { api, getErrorMessage, resolveMediaUrl } from '../lib/api';
 import { getDemoService } from '../lib/demoCatalog';
 
 const gradients = [
-  'from-emerald-100 via-lime-50 to-white text-emerald-800',
+  'from-violet-100 via-purple-50 to-white text-violet-800',
   'from-amber-100 via-orange-50 to-white text-amber-800',
   'from-sky-100 via-cyan-50 to-white text-sky-800',
   'from-violet-100 via-fuchsia-50 to-white text-violet-800'
@@ -254,7 +254,7 @@ export function ServiceDetails({ serviceId, cartItem, onBack, onAddToCart }) {
                 {service.name.slice(0, 2).toUpperCase()}
               </div>
             )}
-            <Badge tone="green" className="absolute top-2 left-2 z-10 text-[9px]">
+            <Badge tone="violet" className="absolute top-2 left-2 z-10 text-[9px]">
               {service.category?.name || 'Service'}
             </Badge>
           </div>
@@ -337,8 +337,8 @@ export function ServiceDetails({ serviceId, cartItem, onBack, onAddToCart }) {
                     </div>
 
                     {tier.arrival && (
-                      <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
-                        <Zap size={13} className="fill-emerald-600 text-emerald-600" />
+                      <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-violet-600">
+                        <Zap size={13} className="fill-violet-600 text-violet-600" />
                         <span>{tier.arrival}</span>
                       </div>
                     )}
@@ -370,7 +370,7 @@ export function ServiceDetails({ serviceId, cartItem, onBack, onAddToCart }) {
           {providers.length > 0 && (
             <div className="pt-2">
               <div className="mb-3 flex items-center gap-2">
-                <BadgeCheck size={16} className="text-emerald-700" />
+                <BadgeCheck size={16} className="text-violet-700" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Verified Independent Professionals ({providers.length})
                 </span>
@@ -383,18 +383,30 @@ export function ServiceDetails({ serviceId, cartItem, onBack, onAddToCart }) {
                       key={pro.id}
                       onClick={() => setSelectedProvider({ id: pro.id, name: pro.displayName, tier: 'Verified Pro', image: pro.avatarUrl })}
                       className={`group flex flex-col sm:flex-row items-start gap-4 sm:gap-5 p-3 rounded-2xl cursor-pointer transition select-none ${
-                        isSelected ? 'bg-emerald-50/70 ring-2 ring-emerald-600' : 'hover:bg-slate-50 border border-transparent'
+                        isSelected ? 'bg-violet-50/70 ring-2 ring-violet-600' : 'hover:bg-slate-50 border border-transparent'
                       }`}
                     >
                       <div className="relative h-24 w-24 sm:h-28 sm:w-28 shrink-0 overflow-hidden rounded-2xl bg-slate-100 shadow-xs border border-slate-200">
                         {pro.avatarUrl ? (
-                          <img src={pro.avatarUrl} alt={pro.displayName} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center bg-emerald-100 text-lg font-black text-emerald-800">
-                            {pro.displayName?.split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase()}
-                          </div>
-                        )}
-                        <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-0.5 rounded-md bg-emerald-700 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs">
+                          <img
+                            src={resolveMediaUrl(pro.avatarUrl)}
+                            alt={pro.displayName}
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              if (e.currentTarget.nextElementSibling) {
+                                e.currentTarget.nextElementSibling.style.display = 'grid';
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          style={{ display: pro.avatarUrl ? 'none' : 'grid' }}
+                          className="h-full w-full place-items-center bg-violet-100 text-lg font-black text-violet-800"
+                        >
+                          {pro.displayName?.split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase()}
+                        </div>
+                        <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-0.5 rounded-md bg-violet-700 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs">
                           ✓ Verified
                         </span>
                       </div>
@@ -402,17 +414,17 @@ export function ServiceDetails({ serviceId, cartItem, onBack, onAddToCart }) {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-lg sm:text-xl font-bold text-slate-900 group-hover:text-emerald-800 transition">
+                            <h3 className="text-lg sm:text-xl font-bold text-slate-900 group-hover:text-violet-800 transition">
                               {pro.displayName}
                             </h3>
                             {isSelected && (
-                              <span className="rounded-full bg-emerald-700 px-2 py-0.5 text-[10px] font-extrabold text-white">
+                              <span className="rounded-full bg-violet-700 px-2 py-0.5 text-[10px] font-extrabold text-white">
                                 ✓ Selected
                               </span>
                             )}
                           </div>
                           <span className={`grid h-6 w-6 place-items-center rounded-full border transition ${
-                            isSelected ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-300 group-hover:border-emerald-500'
+                            isSelected ? 'border-violet-700 bg-violet-700 text-white' : 'border-slate-300 group-hover:border-violet-500'
                           }`}>
                             {isSelected ? <Check size={14} /> : <ChevronRight size={14} className="text-slate-400" />}
                           </span>
@@ -421,7 +433,7 @@ export function ServiceDetails({ serviceId, cartItem, onBack, onAddToCart }) {
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
                           <span>{pro.professionalTitle || 'Service Professional'}</span>
                           {pro.experienceYears > 0 && <span>· {pro.experienceYears} yrs experience</span>}
-                          <span className="text-emerald-700 font-bold">· 100% On-time</span>
+                          <span className="text-violet-700 font-bold">· 100% On-time</span>
                         </div>
 
                         <p className="mt-2 text-xs sm:text-sm font-semibold text-slate-700">
@@ -512,12 +524,12 @@ export function ServiceDetails({ serviceId, cartItem, onBack, onAddToCart }) {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-900">
+              <div className="flex items-center justify-between rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-xs font-bold text-violet-900">
                 <span className="flex items-center gap-1.5">
-                  <UserCheck size={15} className="text-emerald-700" />
+                  <UserCheck size={15} className="text-violet-700" />
                   Selected pro: <strong>{selectedProvider.name}</strong> ({selectedProvider.tier})
                 </span>
-                <span className="text-emerald-700 font-extrabold">{currency(total, service.currency || 'INR')}</span>
+                <span className="text-violet-700 font-extrabold">{currency(total, service.currency || 'INR')}</span>
               </div>
               <Button
                 className="w-full bg-violet-700 hover:bg-violet-800 py-3.5 text-sm font-extrabold text-white flex items-center justify-center gap-2 shadow-sm active:scale-95 transition"
@@ -543,8 +555,8 @@ export function CartPage({ items, onRemove, onCheckout, onContinue }) {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div><p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-emerald-700">Your picks</p><h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">Your cart</h1><p className="mt-1 text-sm text-slate-500">{items.length} {items.length === 1 ? 'service' : 'services'} ready when you are.</p></div>
-        <button type="button" onClick={onContinue} className="inline-flex items-center gap-2 text-sm font-bold text-emerald-700 hover:text-emerald-900"><ArrowLeft size={15} /> Keep exploring</button>
+        <div><p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-violet-700">Your picks</p><h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">Your cart</h1><p className="mt-1 text-sm text-slate-500">{items.length} {items.length === 1 ? 'service' : 'services'} ready when you are.</p></div>
+        <button type="button" onClick={onContinue} className="inline-flex items-center gap-2 text-sm font-bold text-violet-700 hover:text-violet-900"><ArrowLeft size={15} /> Keep exploring</button>
       </div>
       <div className="grid gap-5 lg:grid-cols-[1fr_350px]">
         <div className="space-y-3">
@@ -557,8 +569,8 @@ export function CartPage({ items, onRemove, onCheckout, onContinue }) {
                   <h2 className="mt-1 text-base font-extrabold text-slate-900">{item.name}</h2>
                   <p className="mt-1 text-sm text-slate-500">{item.packageName || 'Standard service'}{item.addonNames?.length ? ` · ${item.addonNames.join(', ')}` : ''}</p>
                   {item.providerName && (
-                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200">
-                      <UserCheck size={13} className="text-emerald-700" />
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-800 border border-violet-200">
+                      <UserCheck size={13} className="text-violet-700" />
                       <span>Provider: <strong>{item.providerName}</strong> ({item.providerTier || 'Verified'})</span>
                     </div>
                   )}

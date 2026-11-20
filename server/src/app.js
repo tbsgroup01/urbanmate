@@ -18,7 +18,9 @@ const errorHandler = require('./middleware/error-handler');
 const { success } = require('./utils/api-response');
 const { sequelize } = require('./models');
 
+
 const app = express();
+
 
 const uploadsDir = path.join(__dirname, '../public/uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -46,13 +48,13 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 app.use(cookieParser());
 app.use('/uploads', express.static(uploadsDir));
+app.use('/urbanmate/uploads', express.static(uploadsDir));
 
 app.use((req, res, next) => {
   req.id = crypto.randomUUID();
   next();
 });
 
-// Clean, readable HTTP request logs
 if (env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
@@ -61,7 +63,7 @@ app.get(['/health', '/health/live'], (req, res) => success(res, { status: 'ok' }
 app.get('/health/ready', async (req, res, next) => {
   try {
     await sequelize.authenticate();
-    return success(res, { status: 'ready' }, { message: 'Readiness check passed' });
+    return success(res, { status: 'ready' }, { message: 'Readiness check passedddd' });
   } catch (error) {
     return next(error);
   }

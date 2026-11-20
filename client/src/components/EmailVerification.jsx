@@ -51,7 +51,7 @@ export default function EmailVerification({ user, onVerified }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <MailCheck size={18} className="text-emerald-700" />
+            <MailCheck size={18} className="text-violet-700" />
             <h3 className="font-extrabold text-slate-900">Email verification</h3>
           </div>
           <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -60,7 +60,7 @@ export default function EmailVerification({ user, onVerified }) {
               : 'Verify your email to help protect your account and complete your provider application.'}
           </p>
         </div>
-        <Badge tone={verified ? 'green' : 'amber'}>{verified ? 'Verified' : 'Not verified'}</Badge>
+        <Badge tone={verified ? 'violet' : 'amber'}>{verified ? 'Verified' : 'Not verified'}</Badge>
       </div>
 
       {!verified && (
@@ -92,7 +92,7 @@ export default function EmailVerification({ user, onVerified }) {
                 type="button"
                 onClick={requestCode}
                 disabled={busy}
-                className="text-xs font-semibold text-emerald-700 transition hover:text-emerald-900 disabled:opacity-50"
+                className="text-xs font-semibold text-violet-700 transition hover:text-violet-900 disabled:opacity-50"
               >
                 Send a new code
               </button>
@@ -101,7 +101,7 @@ export default function EmailVerification({ user, onVerified }) {
         </div>
       )}
 
-      {message && <p role="status" className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800"><BadgeCheck size={16} />{message}</p>}
+      {message && <p role="status" className="mt-4 flex items-center gap-2 rounded-xl bg-violet-50 px-3 py-2.5 text-sm text-violet-800"><BadgeCheck size={16} />{message}</p>}
       {error && <p role="alert" className="mt-4 rounded-xl bg-rose-50 px-3 py-2.5 text-sm text-rose-700">{error}</p>}
     </Card>
   );

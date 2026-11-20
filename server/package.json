@@ -9,6 +9,8 @@
     "start": "node src/server.js",
     "db:sync": "node src/database/sync.js",
     "db:sync:force": "node src/database/sync.js --force",
+    "db:seed:dummy": "node -e \"require('dotenv').config(); require('./src/database/dummy-service').seedDummyData({ force: true }).then(() => process.exit(0));\"",
+    "db:purge:dummy": "node -e \"require('dotenv').config(); require('./src/database/dummy-service').purgeDummyBookings({ all: true }).then(() => process.exit(0));\"",
     "db:setup": "sequelize-cli db:migrate && sequelize-cli db:seed:all",
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
