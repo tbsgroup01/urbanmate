@@ -9,6 +9,7 @@ import {
   useSearchParams
 } from 'react-router-dom';
 import {
+  ArrowRight,
   ArrowUpRight,
   Award,
   Bell,
@@ -57,8 +58,6 @@ const portalConfig = {
     ]
   },
   provider: {
-    title: 'Provider workspace',
-    subtitle: 'Your jobs, schedule, and business — all in one place.',
     nav: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
       { id: 'services', label: 'My services', icon: Wrench },
@@ -70,9 +69,8 @@ const portalConfig = {
       { id: 'profile', label: 'Profile & documents', icon: UserRound }
     ]
   },
+
   admin: {
-    title: 'Operations console',
-    subtitle: 'A clear view of your marketplace operations.',
     nav: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
       { id: 'providers', label: 'Providers', icon: BriefcaseBusiness },
@@ -101,15 +99,64 @@ function getSavedCart() {
 
 function PortalNav({ portal, active, onChange, mobile = false, providerRequestsCount = 0, customerPendingConfirmCount = 0 }) {
   const isProvider = portal === 'provider';
+  const navItems = portalConfig[portal]?.nav || [];
+
+  if (mobile) {
+    const colCount = navItems.length <= 4 ? 'grid-cols-4' : navItems.length <= 6 ? 'grid-cols-6' : 'grid-cols-4 sm:grid-cols-8';
+
+    return (
+      <nav className={`grid ${colCount} gap-2 items-center justify-items-center w-full`} aria-label="Mobile Navigation">
+        {navItems.map(({ id, label, icon: Icon }) => {
+          const hasProviderBadge = portal === 'provider' && id === 'requests' && providerRequestsCount > 0;
+          const hasCustomerBadge = portal === 'customer' && id === 'bookings' && customerPendingConfirmCount > 0;
+          const badgeCount = hasProviderBadge ? providerRequestsCount : hasCustomerBadge ? customerPendingConfirmCount : 0;
+          const badgeColor = hasCustomerBadge ? 'bg-amber-600' : 'bg-rose-500';
+          const isCurrentActive = active === id;
+
+          return (
+            <button
+              type="button"
+              key={id}
+              onClick={() => onChange(id)}
+              aria-label={label}
+              title={label}
+              className={`group relative flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl transition-all duration-300 cursor-pointer ${
+                isCurrentActive
+                  ? 'bg-gradient-to-tr from-violet-600 via-purple-600 to-fuchsia-600 text-white shadow-lg shadow-violet-600/35 ring-2 ring-violet-200/80 scale-105'
+                  : 'text-slate-400 hover:bg-violet-50 hover:text-violet-700 active:scale-95'
+              }`}
+            >
+              <div className="relative flex items-center justify-center">
+                <Icon
+                  size={isCurrentActive ? 22 : 20}
+                  strokeWidth={isCurrentActive ? 2.5 : 1.9}
+                  className="transition-transform duration-200"
+                />
+                {badgeCount > 0 && (
+                  <span
+                    className={`absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full ${badgeColor} px-1 text-[9px] font-black text-white shadow-xs animate-pulse ring-2 ring-white`}
+                  >
+                    {badgeCount}
+                  </span>
+                )}
+              </div>
+              {isCurrentActive && (
+                <span className="absolute -bottom-1 h-1 w-3.5 rounded-full bg-violet-600 shadow-xs shadow-violet-400" />
+              )}
+            </button>
+          );
+        })}
+      </nav>
+    );
+  }
 
   return (
-    <nav className={mobile ? 'grid grid-cols-4 gap-1' : 'space-y-1'}>
-      {portalConfig[portal]?.nav.map(({ id, label, icon: Icon }) => {
+    <nav className="space-y-1">
+      {navItems.map(({ id, label, icon: Icon }) => {
         const hasProviderBadge = portal === 'provider' && id === 'requests' && providerRequestsCount > 0;
         const hasCustomerBadge = portal === 'customer' && id === 'bookings' && customerPendingConfirmCount > 0;
         const badgeCount = hasProviderBadge ? providerRequestsCount : hasCustomerBadge ? customerPendingConfirmCount : 0;
         const badgeColor = hasCustomerBadge ? 'bg-amber-600' : 'bg-rose-500';
-
         const isCurrentActive = active === id;
 
         let buttonStyle = '';
@@ -128,21 +175,18 @@ function PortalNav({ portal, active, onChange, mobile = false, providerRequestsC
             type="button"
             key={id}
             onClick={() => onChange(id)}
-            className={`relative flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-sm transition ${buttonStyle} ${mobile ? 'flex-col gap-1 px-1 py-2 text-[10px] rounded-xl' : ''
-              }`}
+            className={`relative flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-sm transition ${buttonStyle}`}
           >
             <div className="relative">
               <Icon size={18} strokeWidth={isCurrentActive ? 2.4 : 1.8} />
-              {mobile && badgeCount > 0 && (
-                <span className={`absolute -top-1 -right-1 grid h-4 w-4 place-items-center rounded-full ${badgeColor} text-[9px] font-black text-white animate-pulse`}>
-                  {badgeCount}
-                </span>
-              )}
             </div>
-            <span className={mobile ? 'max-w-full truncate' : ''}>{label}</span>
-            {!mobile && badgeCount > 0 && (
-              <span className={`ml-auto inline-flex items-center rounded-full ${isCurrentActive ? (isProvider ? 'bg-white text-violet-700' : 'bg-white text-violet-700') : badgeColor + ' text-white'
-                } px-2 py-0.5 text-[11px] font-black shadow-xs animate-pulse`}>
+            <span>{label}</span>
+            {badgeCount > 0 && (
+              <span
+                className={`ml-auto inline-flex items-center rounded-full ${
+                  isCurrentActive ? 'bg-white text-violet-700' : badgeColor + ' text-white'
+                } px-2 py-0.5 text-[11px] font-black shadow-xs animate-pulse`}
+              >
                 {badgeCount}
               </span>
             )}
@@ -157,14 +201,29 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
   const navigate = useNavigate();
   const firstName = user?.fullName?.split(' ')[0] || 'there';
 
+  const roles = useMemo(() => getUserRoles(user), [user]);
+  const isAdmin = roles.includes('admin');
+  const isProvider = roles.includes('provider');
+
+  const targetUiPath = isAdmin
+    ? '/admin/overview'
+    : isProvider
+    ? '/provider/overview'
+    : '/profile';
+
+  const roleBadgeLabel = isAdmin
+    ? 'Admin Console'
+    : isProvider
+    ? 'Pro Workspace'
+    : 'Customer Space';
+
   function handleBrandClick() {
     if (!user) {
       navigate('/');
       return;
     }
-    const roles = getUserRoles(user);
-    if (roles.includes('admin')) navigate('/admin/overview');
-    else if (roles.includes('provider')) navigate('/provider/overview');
+    if (isAdmin) navigate('/admin/overview');
+    else if (isProvider) navigate('/provider/overview');
     else navigate('/');
   }
 
@@ -183,7 +242,7 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
             </button>
           )}
           <button type="button" onClick={handleBrandClick} className="flex items-center gap-3 text-left">
-            <Brand />
+            <Brand size="lg" />
             {user && (
               <span className="hidden border-l border-slate-200 pl-3 text-xs font-semibold text-slate-500 sm:inline">
                 {portal === 'customer' ? 'HOME SERVICES' : portal === 'provider' ? 'PRO PARTNER' : 'ADMIN CONSOLE'}
@@ -238,6 +297,32 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
         ) : (
           <div className="flex items-center gap-2 sm:gap-4">
             {portal === 'customer' && (
+              <nav className="mr-2 hidden items-center gap-1 md:flex" aria-label="Customer navigation">
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className={`rounded-lg px-3 py-2 text-xs font-bold transition ${active === 'home' ? 'bg-violet-100 text-violet-800' : 'text-slate-600 hover:bg-violet-50 hover:text-violet-800'}`}
+                >
+                  Home
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/services')}
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${active === 'services' ? 'bg-violet-100 text-violet-800' : 'text-slate-600 hover:bg-violet-50 hover:text-violet-800'}`}
+                >
+                  Services
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/bookings')}
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${active === 'bookings' ? 'bg-violet-100 text-violet-800' : 'text-slate-600 hover:bg-violet-50 hover:text-violet-800'}`}
+                >
+                  My bookings
+                </button>
+              </nav>
+            )}
+
+            {portal === 'customer' && (
               <button
                 type="button"
                 onClick={() => navigate('/cart')}
@@ -252,56 +337,81 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
                 )}
               </button>
             )}
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-bold text-slate-800">Hi, {firstName}</p>
-              <p className="text-[11px] capitalize text-slate-400">{portal} account</p>
-            </div>
+
             <div className="relative group">
               <button
                 type="button"
-                className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-violet-100 text-sm font-extrabold text-violet-800 ring-2 ring-white"
-                aria-label="Account menu"
+                onClick={() => navigate(targetUiPath)}
+                className="flex items-center gap-2.5 rounded-full border border-violet-100/90 bg-white/95 py-1 pl-1 pr-3.5 shadow-xs transition-all duration-200 hover:border-violet-300 hover:bg-violet-50/70 hover:shadow-md cursor-pointer"
+                title={`Go to ${roleBadgeLabel} (${targetUiPath})`}
+                aria-label={`Go to ${roleBadgeLabel}`}
               >
-                {user.avatarUrl || user.providerProfile?.avatarUrl ? (
-                  <img
-                    src={resolveMediaUrl(user.avatarUrl || user.providerProfile?.avatarUrl)}
-                    alt={user.fullName}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                      if (e.currentTarget.nextElementSibling) {
-                        e.currentTarget.nextElementSibling.style.display = 'block';
-                      }
+                <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-violet-600 to-purple-600 text-xs font-black text-white shadow-xs ring-2 ring-white">
+                  {user.avatarUrl || user.providerProfile?.avatarUrl ? (
+                    <img
+                      src={resolveMediaUrl(user.avatarUrl || user.providerProfile?.avatarUrl)}
+                      alt={user.fullName}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        if (e.currentTarget.nextElementSibling) {
+                          e.currentTarget.nextElementSibling.style.display = 'flex';
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <span
+                    className="flex h-full w-full items-center justify-center"
+                    style={{
+                      display: user.avatarUrl || user.providerProfile?.avatarUrl ? 'none' : 'flex'
                     }}
-                  />
-                ) : null}
-                <span
-                  style={{
-                    display: user.avatarUrl || user.providerProfile?.avatarUrl ? 'none' : 'block'
-                  }}
-                >
-                  {initials(user.fullName)}
-                </span>
+                  >
+                    {initials(user.fullName)}
+                  </span>
+                </div>
+
+                <div className="hidden text-left sm:block">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-bold text-slate-800 leading-none">Hi, {firstName}</span>
+                    <ArrowUpRight size={13} className="text-violet-600 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+                  <span className="text-[10px] font-semibold text-violet-700 capitalize leading-none">
+                    {roleBadgeLabel}
+                  </span>
+                </div>
               </button>
-              <div className="invisible absolute right-0 top-full z-40 mt-2 w-52 translate-y-1 rounded-2xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
-                <div className="border-b border-slate-100 px-3 py-2">
+
+              <div className="invisible absolute right-0 top-full z-40 mt-2 w-56 translate-y-1 rounded-2xl border border-slate-100 bg-white p-2 opacity-0 shadow-xl transition group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100">
+                <div className="border-b border-slate-100 px-3 py-2.5">
                   <p className="truncate text-sm font-bold text-slate-800">{user.fullName}</p>
                   <p className="truncate text-xs text-slate-400">{user.email}</p>
                 </div>
+
                 <button
                   type="button"
-                  onClick={() => navigate(portal === 'provider' ? '/provider/profile' : '/profile')}
+                  onClick={() => navigate(targetUiPath)}
+                  className="mt-1.5 flex w-full items-center justify-between rounded-xl bg-violet-50 px-3 py-2 text-xs font-bold text-violet-800 hover:bg-violet-100 transition cursor-pointer"
+                >
+                  <span>Go to {roleBadgeLabel}</span>
+                  <ArrowRight size={13} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => navigate(isProvider ? '/provider/profile' : '/profile')}
                   className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
                   <UserRound size={15} className="text-violet-700" /> Your Profile
                 </button>
+
                 <button
                   type="button"
-                  onClick={() => navigate(portal === 'provider' ? '/provider/active' : portal === 'admin' ? '/admin/bookings' : '/bookings')}
+                  onClick={() => navigate(isProvider ? '/provider/active' : isAdmin ? '/admin/bookings' : '/bookings')}
                   className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
-                  <CalendarDays size={15} className="text-violet-700" /> {portal === 'provider' ? 'Active Jobs' : 'My Bookings'}
+                  <CalendarDays size={15} className="text-violet-700" /> {isProvider ? 'Active Jobs' : 'My Bookings'}
                 </button>
+
                 {!user.emailVerified && (
                   <button
                     type="button"
@@ -311,6 +421,7 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
                     <Shield size={15} /> Verify email
                   </button>
                 )}
+
                 <button
                   type="button"
                   onClick={onLogout}
@@ -437,24 +548,26 @@ function PortalLayout({
       )}
 
       {user && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white px-2 py-1.5 lg:hidden">
-          <PortalNav
-            portal={portal}
-            active={active}
-            onChange={(nextTab) => {
-              if (portal === 'customer') {
-                if (nextTab === 'home') navigate('/');
-                else navigate(`/${nextTab}`);
-              } else if (portal === 'provider') {
-                navigate(`/provider/${nextTab}`);
-              } else if (portal === 'admin') {
-                navigate(`/admin/${nextTab}`);
-              }
-            }}
-            mobile
-            providerRequestsCount={providerRequestsCount}
-            customerPendingConfirmCount={customerPendingConfirmCount}
-          />
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-violet-100/90 bg-white/95 px-4 py-2.5 shadow-[0_-4px_25px_rgba(109,40,217,0.08)] backdrop-blur-xl lg:hidden">
+          <div className="mx-auto max-w-md">
+            <PortalNav
+              portal={portal}
+              active={active}
+              onChange={(nextTab) => {
+                if (portal === 'customer') {
+                  if (nextTab === 'home') navigate('/');
+                  else navigate(`/${nextTab}`);
+                } else if (portal === 'provider') {
+                  navigate(`/provider/${nextTab}`);
+                } else if (portal === 'admin') {
+                  navigate(`/admin/${nextTab}`);
+                }
+              }}
+              mobile
+              providerRequestsCount={providerRequestsCount}
+              customerPendingConfirmCount={customerPendingConfirmCount}
+            />
+          </div>
         </div>
       )}
 
@@ -707,8 +820,19 @@ function AuthRoute({ mode, onAuthSuccess }) {
 }
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [booting, setBooting] = useState(true);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('urbanmate_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [booting, setBooting] = useState(() => {
+    const token = getAccessToken();
+    const saved = localStorage.getItem('urbanmate_user');
+    return Boolean(token && !saved);
+  });
   const [emailVerifyOpen, setEmailVerifyOpen] = useState(false);
   const [cartItems, setCartItems] = useState(getSavedCart);
   const [providerRequestsCount, setProviderRequestsCount] = useState(0);
@@ -717,9 +841,36 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  function handleUserUpdate(updatedUser) {
+    setUser(updatedUser);
+    if (updatedUser) {
+      localStorage.setItem('urbanmate_user', JSON.stringify(updatedUser));
+    } else {
+      localStorage.removeItem('urbanmate_user');
+    }
+  }
+
   useEffect(() => {
     localStorage.setItem('urbanmate_cart', JSON.stringify(cartItems));
   }, [cartItems]);
+
+  useEffect(() => {
+    function handleStorage(e) {
+      if (e.key === 'urbanmate_access_token' || e.key === 'urbanmate_user') {
+        const token = localStorage.getItem('urbanmate_access_token');
+        const savedUser = localStorage.getItem('urbanmate_user');
+        if (!token) {
+          setUser(null);
+        } else if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch { }
+        }
+      }
+    }
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -743,8 +894,6 @@ function App() {
     return () => clearInterval(interval);
   }, [user]);
 
-
-
   useEffect(() => {
     let activeRequest = true;
 
@@ -757,16 +906,22 @@ function App() {
           } catch { }
         }
         if (!token) {
-          if (activeRequest) setBooting(false);
+          if (activeRequest) {
+            setUser(null);
+            localStorage.removeItem('urbanmate_user');
+            setBooting(false);
+          }
           return;
         }
 
         const currentUser = await api.get('/auth/me');
         if (!activeRequest) return;
         setUser(currentUser);
+        localStorage.setItem('urbanmate_user', JSON.stringify(currentUser));
       } catch {
         if (activeRequest) {
           setAccessToken(null);
+          localStorage.removeItem('urbanmate_user');
           setUser(null);
         }
       } finally {
@@ -781,6 +936,7 @@ function App() {
   useEffect(() => {
     function handleUnauthorized() {
       setAccessToken(null);
+      localStorage.removeItem('urbanmate_user');
       setUser(null);
     }
     window.addEventListener('urbanmate:unauthorized', handleUnauthorized);
@@ -789,6 +945,9 @@ function App() {
 
   function handleAuthSuccess(nextUser) {
     setUser(nextUser);
+    if (nextUser) {
+      localStorage.setItem('urbanmate_user', JSON.stringify(nextUser));
+    }
     const roles = getUserRoles(nextUser);
     const redirectPath = location.state?.from?.pathname;
     if (redirectPath) {
@@ -807,6 +966,7 @@ function App() {
       await api.post('/auth/logout');
     } catch (_) { }
     setAccessToken(null);
+    localStorage.removeItem('urbanmate_user');
     setUser(null);
     setEmailVerifyOpen(false);
     navigate('/', { replace: true });
@@ -820,7 +980,7 @@ function App() {
     user,
     cartItems,
     setCartItems,
-    onUserUpdate: setUser,
+    onUserUpdate: handleUserUpdate,
     providerRequestsCount,
     customerPendingConfirmCount,
     onLogout: handleLogout,

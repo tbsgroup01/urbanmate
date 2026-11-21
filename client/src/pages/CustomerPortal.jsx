@@ -1432,7 +1432,6 @@ function AddressBook() {
               type="button"
               onClick={handleAdd}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#044c2c] hover:bg-[#033c23] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-violet-700 hover:bg-violet-800 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition"
             >
               <Plus size={16} /> Add Address
             </button>
@@ -2461,13 +2460,7 @@ function CustomerProfile({ user, onUserUpdate }) {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setEditingProfile(true)}
-                className="shrink-0 rounded-full border border-violet-300 bg-white px-3 py-0.5 text-[11px] font-bold text-violet-700 transition hover:bg-violet-50 cursor-pointer"
-              >
-                {user?.phone ? 'Verify' : 'Add'}
-              </button>
+
             </div>
           </div>
         </div>

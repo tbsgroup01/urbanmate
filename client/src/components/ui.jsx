@@ -32,40 +32,46 @@ export function Button({
   );
 }
 
-export function Brand({ compact = false, dark = false }) {
+export function Brand({ compact = false, dark = false, size = 'lg', className = '' }) {
   const { settings } = useSettings();
   const [imgError, setImgError] = useState(false);
   const logoUrl = !imgError && settings?.logoUrl ? settings.logoUrl : null;
   const siteName = settings?.siteName || 'UrbanMate';
 
+  const isLarge = size === 'lg';
+
   const renderName = () => {
     if (siteName.toLowerCase() === 'urbanmate') {
       return (
-        <span className={`text-[17px] font-extrabold tracking-tight ${dark ? 'text-white' : 'text-slate-900'}`}>
+        <span className={`${isLarge ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-black tracking-tight ${dark ? 'text-white' : 'text-slate-900'}`}>
           urban<span className={dark ? 'text-fuchsia-300' : 'text-violet-700'}>mate</span>
         </span>
       );
     }
     return (
-      <span className={`text-[17px] font-extrabold tracking-tight truncate max-w-[200px] ${dark ? 'text-white' : 'text-slate-900'}`}>
+      <span className={`${isLarge ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-black tracking-tight truncate max-w-[240px] ${dark ? 'text-white' : 'text-slate-900'}`}>
         {siteName}
       </span>
     );
   };
 
   return (
-    <div className="flex items-center gap-2.5">
+    <div className={`flex items-center gap-2.5 sm:gap-3 ${className}`}>
       {logoUrl ? (
         <img
           src={resolveMediaUrl(logoUrl)}
           alt={siteName}
           onError={() => setImgError(true)}
-          className="h-9 sm:h-10 w-auto max-h-10 max-w-[180px] object-contain"
+          className={`${
+            isLarge
+              ? 'h-11 sm:h-13 max-h-13 sm:max-h-14 max-w-[220px] sm:max-w-[270px]'
+              : 'h-9 sm:h-10 max-h-10 max-w-[180px] sm:max-w-[210px]'
+          } w-auto object-contain transition-transform duration-200 hover:scale-[1.02]`}
         />
       ) : (
         <>
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-700 text-white shadow-sm shrink-0">
-            <Sparkles size={18} strokeWidth={2.2} />
+          <span className={`flex ${isLarge ? 'h-11 w-11' : 'h-9 w-9'} items-center justify-center rounded-xl bg-violet-700 text-white shadow-sm shrink-0`}>
+            <Sparkles size={isLarge ? 22 : 18} strokeWidth={2.2} />
           </span>
           {!compact && renderName()}
         </>

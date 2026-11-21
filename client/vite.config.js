@@ -9,11 +9,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/uploads': {
-        target: 'http://localhost:4000',
+        target: 'https://urbanmate.towsindia.com',
         changeOrigin: true
       },
       '/urbanmate/uploads': {
-        target: 'http://localhost:4000',
+        target: 'https://urbanmate.towsindia.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/urbanmate\/uploads/, '/uploads')
       }

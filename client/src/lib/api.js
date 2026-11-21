@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api/v1').replace(/\/$/, '');
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'https://urbanmate.towsindia.com/api/v1').replace(/\/$/, '');
 export const SERVER_BASE = API_BASE.replace(/\/api\/v1\/?$/, '');
 
 export function resolveMediaUrl(url) {
@@ -33,7 +33,9 @@ export function assetUrl(path) {
 
 const TOKEN_KEY = 'urbanmate_access_token';
 
-let accessToken = sessionStorage.getItem(TOKEN_KEY);
+let accessToken = typeof window !== 'undefined'
+  ? (localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY))
+  : null;
 let refreshPromise;
 
 export class ApiError extends Error {
@@ -57,11 +59,25 @@ function getApiError(payload) {
 
 export function setAccessToken(token) {
   accessToken = token || null;
-  if (accessToken) sessionStorage.setItem(TOKEN_KEY, accessToken);
-  else sessionStorage.removeItem(TOKEN_KEY);
+  if (typeof window !== 'undefined') {
+    if (accessToken) {
+      localStorage.setItem(TOKEN_KEY, accessToken);
+      sessionStorage.setItem(TOKEN_KEY, accessToken);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
+    }
+  }
 }
 
 export function getAccessToken() {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+    if (stored) {
+      accessToken = stored;
+      return stored;
+    }
+  }
   return accessToken;
 }
 

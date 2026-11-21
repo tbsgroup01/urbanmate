@@ -91,7 +91,7 @@ Customer registration only grants the customer role. Provider registration only 
 To add another admin, send `POST /api/v1/auth/admin/register` with an existing admin's access token and the standard `fullName`, `email`, and `password` registration fields:
 
 ```sh
-curl -X POST http://localhost:4000/api/v1/auth/admin/register \
+curl -X POST https://urbanmate.towsindia.com/api/v1/auth/admin/register \
   -H "Authorization: Bearer <admin-access-token>" \
   -H "Content-Type: application/json" \
   -d '{"fullName":"New Admin","email":"admin@example.com","password":"<strong-password>"}'
@@ -100,7 +100,7 @@ curl -X POST http://localhost:4000/api/v1/auth/admin/register \
 For local development with `ALLOW_DEV_ADMIN_REGISTRATION=true`, the same request can be sent without the `Authorization` header from the local machine:
 
 ```sh
-curl -X POST http://localhost:4000/api/v1/auth/admin/register \
+curl -X POST https://urbanmate.towsindia.com/api/v1/auth/admin/register \
   -H "Content-Type: application/json" \
   -d '{"fullName":"Local Admin","email":"admin@example.com","password":"<strong-password>"}'
 ```
