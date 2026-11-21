@@ -8,6 +8,7 @@ import {
   useParams,
   useSearchParams
 } from 'react-router-dom';
+
 import {
   ArrowRight,
   ArrowUpRight,
@@ -32,8 +33,12 @@ import {
   Wallet,
   Wrench
 } from 'lucide-react';
+
+
 import AuthPage from './pages/AuthPage';
+
 import EmailVerification from './components/EmailVerification';
+
 import {
   Brand,
   Button,
@@ -57,6 +62,7 @@ const portalConfig = {
       { id: 'profile', label: 'Profile', icon: UserRound }
     ]
   },
+
   provider: {
     nav: [
       { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -120,11 +126,10 @@ function PortalNav({ portal, active, onChange, mobile = false, providerRequestsC
               onClick={() => onChange(id)}
               aria-label={label}
               title={label}
-              className={`group relative flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl transition-all duration-300 cursor-pointer ${
-                isCurrentActive
-                  ? 'bg-gradient-to-tr from-violet-600 via-purple-600 to-fuchsia-600 text-white shadow-lg shadow-violet-600/35 ring-2 ring-violet-200/80 scale-105'
-                  : 'text-slate-400 hover:bg-violet-50 hover:text-violet-700 active:scale-95'
-              }`}
+              className={`group relative flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl transition-all duration-300 cursor-pointer ${isCurrentActive
+                ? 'bg-gradient-to-tr from-violet-600 via-purple-600 to-fuchsia-600 text-white shadow-lg shadow-violet-600/35 ring-2 ring-violet-200/80 scale-105'
+                : 'text-slate-400 hover:bg-violet-50 hover:text-violet-700 active:scale-95'
+                }`}
             >
               <div className="relative flex items-center justify-center">
                 <Icon
@@ -140,9 +145,6 @@ function PortalNav({ portal, active, onChange, mobile = false, providerRequestsC
                   </span>
                 )}
               </div>
-              {isCurrentActive && (
-                <span className="absolute -bottom-1 h-1 w-3.5 rounded-full bg-violet-600 shadow-xs shadow-violet-400" />
-              )}
             </button>
           );
         })}
@@ -183,9 +185,8 @@ function PortalNav({ portal, active, onChange, mobile = false, providerRequestsC
             <span>{label}</span>
             {badgeCount > 0 && (
               <span
-                className={`ml-auto inline-flex items-center rounded-full ${
-                  isCurrentActive ? 'bg-white text-violet-700' : badgeColor + ' text-white'
-                } px-2 py-0.5 text-[11px] font-black shadow-xs animate-pulse`}
+                className={`ml-auto inline-flex items-center rounded-full ${isCurrentActive ? 'bg-white text-violet-700' : badgeColor + ' text-white'
+                  } px-2 py-0.5 text-[11px] font-black shadow-xs animate-pulse`}
               >
                 {badgeCount}
               </span>
@@ -208,14 +209,14 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
   const targetUiPath = isAdmin
     ? '/admin/overview'
     : isProvider
-    ? '/provider/overview'
-    : '/profile';
+      ? '/provider/overview'
+      : '/profile';
 
   const roleBadgeLabel = isAdmin
     ? 'Admin Console'
     : isProvider
-    ? 'Pro Workspace'
-    : 'Customer Space';
+      ? 'Pro Workspace'
+      : 'Customer Space';
 
   function handleBrandClick() {
     if (!user) {
@@ -438,6 +439,18 @@ function AppHeader({ user, portal, active, onLogout, onToggleMenu, onVerifyEmail
   );
 }
 
+function ScrollToTop() {
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [pathname, search]);
+
+  return null;
+}
+
 function PortalLayout({
   user,
   portal,
@@ -452,8 +465,14 @@ function PortalLayout({
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [portal, active]);
+
   return (
-    <div className="flex min-h-screen flex-col bg-[#f7f8f6] text-slate-900">
+    <div className="flex min-h-screen flex-col bg-[#f7f8f6] text-slate-900 w-full overflow-x-hidden">
       <AppHeader
         user={user}
         portal={portal}
@@ -572,7 +591,7 @@ function PortalLayout({
       )}
 
       {portal !== 'admin' && (
-        <footer className="bg-[#1d123d] px-5 py-9 text-violet-100 sm:px-8">
+        <footer className="w-full bg-[#1d123d] px-5 py-9 text-violet-100 sm:px-8 overflow-hidden">
           <div className="mx-auto grid max-w-[1360px] gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.8fr_1fr]">
             <div>
               <div className="flex items-center gap-3">
@@ -617,7 +636,7 @@ function PortalLayout({
                 <button
                   type="button"
                   onClick={() => navigate('/register/provider')}
-                  className="mt-3 text-xs font-bold text-black transition hover:text-fuchsia-200"
+                  className="mt-3 text-xs font-bold text-violet-300 transition hover:text-white"
                 >
                   Become a partner <ArrowUpRight size={13} className="ml-1 inline" />
                 </button>
@@ -989,6 +1008,7 @@ function App() {
 
   return (
     <>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<CustomerPage active="home" {...commonProps} />} />
         <Route path="/services" element={<CustomerPage active="services" {...commonProps} />} />

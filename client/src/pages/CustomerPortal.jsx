@@ -783,7 +783,13 @@ function CustomerHome({ user, onOpenService, onTabChange, onSelectCategory, onBe
         <div className="absolute -right-10 -top-20 h-60 w-60 rounded-full border border-white/15" />
         <div className="relative flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
           <div><p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-violet-200">For skilled professionals</p><h2 className="mt-2 text-xl font-black sm:text-2xl">Build your business with Urbanmate.</h2><p className="mt-2 max-w-xl text-xs leading-5 text-violet-100">Connect with customers, manage your schedule, and grow your local service business.</p></div>
-          <Button className="shrink-0 bg-white text-red-800 hover:bg-violet-50" onClick={onBecomePartner}>Become a partner <ArrowRight size={15} /></Button>
+          <button
+            type="button"
+            onClick={onBecomePartner}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-extrabold text-violet-900 shadow-md transition-all duration-200 hover:bg-violet-50 hover:text-violet-950 hover:shadow-lg active:scale-95 cursor-pointer"
+          >
+            Become a partner <ArrowRight size={15} className="text-violet-700" />
+          </button>
         </div>
       </section>
     </div>
@@ -2361,10 +2367,10 @@ function CustomerProfile({ user, onUserUpdate }) {
         {/* Card 1: User Identity Card */}
         <div className="flex flex-col justify-between rounded-[24px] border border-slate-200/80 bg-white p-6 sm:p-7 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.06)]">
           <div>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 <div className="relative shrink-0">
-                  <div className="flex h-16 w-16 sm:h-[74px] sm:w-[74px] items-center justify-center rounded-full overflow-hidden bg-gradient-to-br from-violet-100 to-purple-100 text-xl font-black text-violet-800 shadow-inner ring-2 ring-white">
+                  <div className="flex h-14 w-14 sm:h-[74px] sm:w-[74px] items-center justify-center rounded-full overflow-hidden bg-gradient-to-br from-violet-100 to-purple-100 text-xl font-black text-violet-800 shadow-inner ring-2 ring-white">
                     {user?.avatarUrl ? (
                       <img
                         src={resolveMediaUrl(user.avatarUrl)}
@@ -2397,9 +2403,9 @@ function CustomerProfile({ user, onUserUpdate }) {
                     />
                   </label>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <h2 className="text-xl font-black text-slate-900">{user?.fullName || 'Customer'}</h2>
+                    <h2 className="text-lg sm:text-xl font-black text-slate-900 truncate">{user?.fullName || 'Customer'}</h2>
                     <svg viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px] text-[#7c3aed] shrink-0" title="Verified Account">
                       <path fillRule="evenodd" d="M8.603 3.799A4.49 4.49 0 0112 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 013.498 1.307 4.491 4.491 0 011.307 3.497A4.49 4.49 0 0121.75 12a4.49 4.49 0 01-1.549 3.397 4.491 4.491 0 01-1.307 3.497 4.491 4.491 0 01-3.497 1.307A4.49 4.49 0 0112 21.75a4.49 4.49 0 01-3.397-1.549 4.49 4.49 0 01-3.498-1.306 4.491 4.491 0 01-1.307-3.498A4.49 4.49 0 012.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 011.307-3.497 4.49 4.49 0 013.497-1.307zm7.007 6.387a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd" />
                     </svg>
@@ -2411,7 +2417,7 @@ function CustomerProfile({ user, onUserUpdate }) {
               <button
                 type="button"
                 onClick={() => setEditingProfile(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/80 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs transition hover:bg-violet-50 cursor-pointer"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-violet-400/80 bg-white px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs transition hover:bg-violet-50 cursor-pointer self-start sm:self-auto"
               >
                 <Pencil size={13} className="text-violet-700" />
                 Edit Profile
@@ -3628,6 +3634,12 @@ export default function CustomerPortal({
   const [loginPrompt, setLoginPrompt] = useState(false);
 
   const currentServiceId = detailServiceId || (active === 'service' ? (serviceParam || categoryParam) : '');
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [active, currentServiceId, categoryParam]);
 
   function openService(id) {
     setDetailServiceId(id);

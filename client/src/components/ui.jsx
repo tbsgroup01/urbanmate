@@ -43,35 +43,34 @@ export function Brand({ compact = false, dark = false, size = 'lg', className = 
   const renderName = () => {
     if (siteName.toLowerCase() === 'urbanmate') {
       return (
-        <span className={`${isLarge ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-black tracking-tight ${dark ? 'text-white' : 'text-slate-900'}`}>
+        <span className={`${isLarge ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'} font-black tracking-tight ${dark ? 'text-white' : 'text-slate-900'}`}>
           urban<span className={dark ? 'text-fuchsia-300' : 'text-violet-700'}>mate</span>
         </span>
       );
     }
     return (
-      <span className={`${isLarge ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-black tracking-tight truncate max-w-[240px] ${dark ? 'text-white' : 'text-slate-900'}`}>
+      <span className={`${isLarge ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'} font-black tracking-tight truncate max-w-[170px] sm:max-w-[240px] ${dark ? 'text-white' : 'text-slate-900'}`}>
         {siteName}
       </span>
     );
   };
 
   return (
-    <div className={`flex items-center gap-2.5 sm:gap-3 ${className}`}>
+    <div className={`flex items-center gap-2 sm:gap-3 ${className}`}>
       {logoUrl ? (
         <img
           src={resolveMediaUrl(logoUrl)}
           alt={siteName}
           onError={() => setImgError(true)}
-          className={`${
-            isLarge
-              ? 'h-11 sm:h-13 max-h-13 sm:max-h-14 max-w-[220px] sm:max-w-[270px]'
-              : 'h-9 sm:h-10 max-h-10 max-w-[180px] sm:max-w-[210px]'
-          } w-auto object-contain transition-transform duration-200 hover:scale-[1.02]`}
+          className={`${isLarge
+            ? 'h-10 sm:h-13 max-h-11 sm:max-h-14 max-w-[170px] sm:max-w-[270px]'
+            : 'h-9 sm:h-10 max-h-10 max-w-[150px] sm:max-w-[210px]'
+            } w-auto object-contain transition-transform duration-200 hover:scale-[1.02]`}
         />
       ) : (
         <>
-          <span className={`flex ${isLarge ? 'h-11 w-11' : 'h-9 w-9'} items-center justify-center rounded-xl bg-violet-700 text-white shadow-sm shrink-0`}>
-            <Sparkles size={isLarge ? 22 : 18} strokeWidth={2.2} />
+          <span className={`flex ${isLarge ? 'h-10 w-10 sm:h-11 sm:w-11' : 'h-9 w-9'} items-center justify-center rounded-xl bg-violet-700 text-white shadow-sm shrink-0`}>
+            <Sparkles size={isLarge ? 20 : 18} strokeWidth={2.2} />
           </span>
           {!compact && renderName()}
         </>
@@ -212,6 +211,8 @@ export function currency(value, code = 'INR') {
     maximumFractionDigits: 0
   }).format(Number(value || 0));
 }
+
+
 
 export function initials(name = '') {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() || 'U';
